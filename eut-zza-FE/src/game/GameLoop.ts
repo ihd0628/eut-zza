@@ -13,3 +13,47 @@
  *
  * 게임 규칙, 키보드 입력, Canvas 렌더링은 이 파일의 책임이 아니다.
  */
+
+type FrameCallback = (timestamp: number, deltaTime: number) => void;
+
+export class GameLoop {
+  private animationFrameId: number | null = null;
+  private previousTimestamp: number | null = null;
+  private isRunning = false;
+  private readonly onFrame: FrameCallback;
+
+  constructor(onFrame: FrameCallback) {
+    this.onFrame = onFrame;
+  }
+
+  start() {
+    if (this.isRunning) return;
+
+    this.isRunning = true;
+    this.previousTimestamp = null;
+    this.animationFrameId = requestAnimationFrame(this.frame);
+  }
+
+  stop() {
+    this.isRunning = false;
+    this.previousTimestamp = null;
+
+    if (this.animationFrameId !== null) {
+      cancelAnimationFrame(this.animationFrameId);
+      this.animationFrameId = null;
+    }
+  }
+
+  private frame = (timestamp: number) => {
+    if (!this.isRunning) return;
+
+    const deltaTime =
+      this.previousTimestamp !== null ? timestamp - this.previousTimestamp : 0;
+    this.previousTimestamp = timestamp;
+    this.onFrame(timestamp, deltaTime);
+
+    if (this.isRunning) {
+      this.animationFrameId = requestAnimationFrame(this.frame);
+    }
+  };
+}
