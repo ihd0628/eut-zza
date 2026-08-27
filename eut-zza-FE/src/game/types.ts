@@ -13,3 +13,15 @@
  *
  * 이 파일에는 실행되는 게임 로직이 아니라 타입과 인터페이스만 둔다.
  */
+
+export type GameKey = "D" | "F" | "J" | "K";
+
+export type InputType = "down" | "up";
+
+export interface GameInputEvent {
+  key: GameKey;
+  type: InputType;
+  timestamp: number;
+}
+
+export type InputCallback = (event: GameInputEvent) => void;

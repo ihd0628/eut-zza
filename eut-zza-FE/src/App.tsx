@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import "./App.css";
 import { GameLoop } from "./game/GameLoop";
+import { InputManager } from "./game/InputManager";
 
 function App() {
   const [isShowSample, setIsShowSample] = useState(false);
@@ -21,6 +22,7 @@ function App() {
         {isShowSample ? "Hide" : "Show"} Sample Game Loop
       </button>
       {isShowSample && <SampleGameLoop />}
+      {isShowSample && <SampleInputManager />}
     </div>
   );
 }
@@ -45,4 +47,17 @@ const SampleGameLoop = () => {
   }, []);
 
   return <div>Check the console for game loop logs.</div>;
+};
+
+const SampleInputManager = () => {
+  useEffect(() => {
+    const inputManager = new InputManager((event) => {
+      console.log(event);
+    });
+    inputManager.attach();
+
+    return () => inputManager.detach();
+  }, []);
+
+  return <div>Check the console for input logs</div>;
 };

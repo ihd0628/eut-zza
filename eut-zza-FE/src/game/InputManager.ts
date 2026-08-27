@@ -13,3 +13,75 @@
  *
  * 실제 노트 판정과 점수 계산은 GameEngine 또는 별도의 판정 모듈이 담당한다.
  */
+
+import type { InputCallback } from "./types";
+
+export class InputManager {
+  private readonly onInput: InputCallback;
+  private isAttached = false;
+
+  constructor(onInput: InputCallback) {
+    this.onInput = onInput;
+  }
+
+  attach() {
+    if (!this.isAttached) {
+      window.addEventListener("keydown", this.handleKeyDown);
+      window.addEventListener("keyup", this.handleKeyUp);
+
+      this.isAttached = true;
+    }
+  }
+  detach() {
+    if (this.isAttached) {
+      window.removeEventListener("keydown", this.handleKeyDown);
+      window.removeEventListener("keyup", this.handleKeyUp);
+
+      this.isAttached = false;
+    }
+  }
+
+  private translateEventCodeToGameKey = (
+    eventCode: "KeyD" | "KeyF" | "KeyJ" | "KeyK",
+  ) => {
+    if (eventCode === "KeyD") {
+      return "D";
+    } else if (eventCode === "KeyF") {
+      return "F";
+    } else if (eventCode === "KeyJ") {
+      return "J";
+    } else {
+      return "K";
+    }
+  };
+
+  private handleKeyDown = (event: KeyboardEvent) => {
+    if (
+      (event.code === "KeyD" ||
+        event.code === "KeyF" ||
+        event.code === "KeyJ" ||
+        event.code === "KeyK") &&
+      event.repeat === false
+    ) {
+      this.onInput({
+        key: this.translateEventCodeToGameKey(event.code),
+        type: "down",
+        timestamp: performance.now(),
+      });
+    }
+  };
+  private handleKeyUp = (event: KeyboardEvent) => {
+    if (
+      event.code === "KeyD" ||
+      event.code === "KeyF" ||
+      event.code === "KeyJ" ||
+      event.code === "KeyK"
+    ) {
+      this.onInput({
+        key: this.translateEventCodeToGameKey(event.code),
+        type: "up",
+        timestamp: performance.now(),
+      });
+    }
+  };
+}
