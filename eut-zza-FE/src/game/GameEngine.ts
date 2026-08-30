@@ -13,3 +13,38 @@
  *
  * 이 파일에는 React 컴포넌트, JSX, useState를 넣지 않는다.
  */
+
+import { GameLoop } from "./GameLoop";
+import { InputManager } from "./InputManager";
+import type { GameInputEvent } from "./types";
+
+export class GameEngine {
+  private readonly gameLoop: GameLoop;
+  private readonly inputManager: InputManager;
+  private lastLoggedAt = 0;
+
+  constructor() {
+    this.gameLoop = new GameLoop(this.handleFrame);
+    this.inputManager = new InputManager(this.handleInput);
+  }
+
+  start() {
+    this.inputManager.attach();
+    this.gameLoop.start();
+  }
+  stop() {
+    this.gameLoop.stop();
+    this.inputManager.detach();
+  }
+
+  private handleFrame = (timestamp: number, deltaTime: number) => {
+    if (timestamp - this.lastLoggedAt < 1000) return;
+
+    this.lastLoggedAt = timestamp;
+    console.log("timestamp : ", timestamp);
+    console.log("deltaTime : ", deltaTime);
+  };
+  private handleInput = (event: GameInputEvent) => {
+    console.log(event);
+  };
+}

@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import "./App.css";
-import { GameLoop } from "./game/GameLoop";
-import { InputManager } from "./game/InputManager";
+import { GameEngine } from "./game/GameEngine";
 
 function App() {
   const [isShowSample, setIsShowSample] = useState(false);
@@ -21,43 +20,20 @@ function App() {
       <button onClick={() => setIsShowSample((value) => !value)}>
         {isShowSample ? "Hide" : "Show"} Sample Game Loop
       </button>
-      {isShowSample && <SampleGameLoop />}
-      {isShowSample && <SampleInputManager />}
+      {isShowSample && <SampleGameEngine />}
     </div>
   );
 }
 
 export default App;
 
-const SampleGameLoop = () => {
+const SampleGameEngine = () => {
   useEffect(() => {
-    let lastLoggedAt = 0;
+    const gameEngine = new GameEngine();
+    gameEngine.start();
 
-    const loop = new GameLoop((timestamp, delta) => {
-      if (timestamp - lastLoggedAt >= 1000) {
-        lastLoggedAt = timestamp;
-        console.log(`Timestamp: ${timestamp}, Delta: ${delta}`);
-      }
-    });
-
-    loop.start();
-    return () => {
-      loop.stop();
-    };
+    return () => gameEngine.stop();
   }, []);
 
-  return <div>Check the console for game loop logs.</div>;
-};
-
-const SampleInputManager = () => {
-  useEffect(() => {
-    const inputManager = new InputManager((event) => {
-      console.log(event);
-    });
-    inputManager.attach();
-
-    return () => inputManager.detach();
-  }, []);
-
-  return <div>Check the console for input logs</div>;
+  return <div>GameEngine is Started</div>;
 };
