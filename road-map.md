@@ -262,6 +262,14 @@ Connection
 
 ---
 
+## 주간 완료 조건 관리
+
+- 주간 완료 조건은 학습과 구현을 마치고 검증까지 통과한 뒤에만 `[x]`로 변경한다.
+- 완료한 작업을 커밋할 때 관련 체크리스트 변경도 같은 커밋에 포함한다.
+- 완료 여부를 확신할 수 없거나 검증하지 않은 항목은 `[ ]`로 유지한다.
+
+---
+
 # WEEK 1
 
 ## 8월 25일 ~ 8월 31일
@@ -375,11 +383,11 @@ CPU에 부하를 준 상태에서도 timer가 얼마나 밀리는지 측정한�
 
 ## 주간 완료 조건
 
-- Event Loop를 그림 없이 설명할 수 있다.
-- Task와 Microtask 차이를 설명할 수 있다.
-- `await` 이후 코드가 언제 실행되는지 설명할 수 있다.
-- `requestAnimationFrame` 기반 game loop를 구현했다.
-- React render와 game loop를 분리했다.
+- [ ] Event Loop를 그림 없이 설명할 수 있다.
+- [ ] Task와 Microtask 차이를 설명할 수 있다.
+- [ ] `await` 이후 코드가 언제 실행되는지 설명할 수 있다.
+- [x] `requestAnimationFrame` 기반 game loop를 구현했다.
+- [x] React render와 game loop를 분리했다.
 
 ---
 
@@ -519,12 +527,12 @@ Judgment
 
 ## 주간 완료 조건
 
-- Canvas에 노트가 내려온다.
-- D/F/J/K 입력을 받을 수 있다.
-- Web Audio clock을 기준으로 판정한다.
-- PERFECT/GREAT/GOOD/MISS가 구현됐다.
-- 60Hz/120Hz에 따라 게임 판정이 달라지지 않는다.
-- React가 여러 번 렌더링되어도 음악 timing은 영향을 받지 않는다.
+- [ ] Canvas에 노트가 내려온다.
+- [ ] D/F/J/K 입력을 받을 수 있다.
+- [ ] Web Audio clock을 기준으로 판정한다.
+- [ ] PERFECT/GREAT/GOOD/MISS가 구현됐다.
+- [ ] 60Hz/120Hz에 따라 게임 판정이 달라지지 않는다.
+- [ ] React가 여러 번 렌더링되어도 음악 timing은 영향을 받지 않는다.
 
 ---
 
@@ -662,11 +670,11 @@ GET /songs/:id
 
 ## 주간 완료 조건
 
-- URL 입력부터 HTTP response까지 설명할 수 있다.
-- Node.js 기본 HTTP server를 직접 만들었다.
-- Fastify를 이용한 REST API를 만들었다.
-- Browser → API Server 흐름을 이해한다.
-- CORS가 왜 존재하는지 설명할 수 있다.
+- [ ] URL 입력부터 HTTP response까지 설명할 수 있다.
+- [ ] Node.js 기본 HTTP server를 직접 만들었다.
+- [ ] Fastify를 이용한 REST API를 만들었다.
+- [ ] Browser → API Server 흐름을 이해한다.
+- [ ] CORS가 왜 존재하는지 설명할 수 있다.
 
 ---
 
@@ -786,12 +794,12 @@ GET /users/:id/scores
 
 ## 주간 완료 조건
 
-- JOIN을 직접 작성할 수 있다.
-- Index가 왜 조회를 빠르게 만드는지 설명할 수 있다.
-- B-Tree의 기본 구조를 설명할 수 있다.
-- `EXPLAIN`을 읽어봤다.
-- Transaction을 직접 실험했다.
-- MVCC가 왜 필요한지 설명할 수 있다.
+- [ ] JOIN을 직접 작성할 수 있다.
+- [ ] Index가 왜 조회를 빠르게 만드는지 설명할 수 있다.
+- [ ] B-Tree의 기본 구조를 설명할 수 있다.
+- [ ] `EXPLAIN`을 읽어봤다.
+- [ ] Transaction을 직접 실험했다.
+- [ ] MVCC가 왜 필요한지 설명할 수 있다.
 
 ---
 
@@ -919,11 +927,11 @@ Client/Game State
 
 ## 주간 완료 조건
 
-- Route/Service/Repository 책임을 설명할 수 있다.
-- Authentication과 Authorization 차이를 설명할 수 있다.
-- Cookie와 JWT의 차이를 설명할 수 있다.
-- React에서 서버 상태와 클라이언트 상태를 분리했다.
-- 실제 로그인 → 플레이 → 기록 저장 흐름이 동작한다.
+- [ ] Route/Service/Repository 책임을 설명할 수 있다.
+- [ ] Authentication과 Authorization 차이를 설명할 수 있다.
+- [ ] Cookie와 JWT의 차이를 설명할 수 있다.
+- [ ] React에서 서버 상태와 클라이언트 상태를 분리했다.
+- [ ] 실제 로그인 → 플레이 → 기록 저장 흐름이 동작한다.
 
 ---
 
@@ -1025,12 +1033,12 @@ Game End
 
 ## 주간 완료 조건
 
-- 두 브라우저가 같은 room에 접속한다.
-- 게임 시작을 동기화할 수 있다.
-- 상대 score/combo를 실시간 확인한다.
-- disconnect를 감지한다.
-- reconnect 전략을 고민했다.
-- WebSocket과 HTTP의 역할을 구분할 수 있다.
+- [ ] 두 브라우저가 같은 room에 접속한다.
+- [ ] 게임 시작을 동기화할 수 있다.
+- [ ] 상대 score/combo를 실시간 확인한다.
+- [ ] disconnect를 감지한다.
+- [ ] reconnect 전략을 고민했다.
+- [ ] WebSocket과 HTTP의 역할을 구분할 수 있다.
 
 ---
 
@@ -1144,11 +1152,11 @@ Unique Constraint
 
 ## 주간 완료 조건
 
-- Matchmaking이 동작한다.
-- Redis leaderboard가 동작한다.
-- RTT를 직접 측정한다.
-- latency가 게임에 어떤 영향을 주는지 설명할 수 있다.
-- duplicate request를 안전하게 처리할 수 있다.
+- [ ] Matchmaking이 동작한다.
+- [ ] Redis leaderboard가 동작한다.
+- [ ] RTT를 직접 측정한다.
+- [ ] latency가 게임에 어떤 영향을 주는지 설명할 수 있다.
+- [ ] duplicate request를 안전하게 처리할 수 있다.
 
 ---
 
@@ -1293,12 +1301,12 @@ Deploy
 
 ## 주간 완료 조건
 
-- Dockerfile을 직접 작성했다.
-- Frontend와 Backend를 배포했다.
-- HTTPS 도메인으로 접속할 수 있다.
-- DB가 production 환경에서 동작한다.
-- CI가 자동 실행된다.
-- 배포 과정을 설명할 수 있다.
+- [ ] Dockerfile을 직접 작성했다.
+- [ ] Frontend와 Backend를 배포했다.
+- [ ] HTTPS 도메인으로 접속할 수 있다.
+- [ ] DB가 production 환경에서 동작한다.
+- [ ] CI가 자동 실행된다.
+- [ ] 배포 과정을 설명할 수 있다.
 
 ---
 
@@ -1387,11 +1395,11 @@ score는 음수가 될 수 없다.
 
 ## 주간 완료 조건
 
-- 게임 엔진 unit test가 있다.
-- API integration test가 있다.
-- 핵심 사용자 흐름 E2E test가 있다.
-- 중요한 business invariant를 문서화했다.
-- CI에서 모든 검증이 자동 수행된다.
+- [ ] 게임 엔진 unit test가 있다.
+- [ ] API integration test가 있다.
+- [ ] 핵심 사용자 흐름 E2E test가 있다.
+- [ ] 중요한 business invariant를 문서화했다.
+- [ ] CI에서 모든 검증이 자동 수행된다.
 
 ---
 
@@ -1536,11 +1544,11 @@ CI
 
 ## 주간 완료 조건
 
-- Agent가 repository 문서를 보고 작업할 수 있다.
-- 기능 하나를 Agent에게 처음부터 끝까지 맡겼다.
-- Agent 코드에서 실제 문제를 직접 발견했다.
-- 테스트 또는 lint가 Agent의 오류를 잡았다.
-- 인간이 직접 코드를 작성하는 것과 Agent에게 위임할 작업을 구분할 수 있다.
+- [ ] Agent가 repository 문서를 보고 작업할 수 있다.
+- [ ] 기능 하나를 Agent에게 처음부터 끝까지 맡겼다.
+- [ ] Agent 코드에서 실제 문제를 직접 발견했다.
+- [ ] 테스트 또는 lint가 Agent의 오류를 잡았다.
+- [ ] 인간이 직접 코드를 작성하는 것과 Agent에게 위임할 작업을 구분할 수 있다.
 
 ---
 
@@ -1640,27 +1648,18 @@ Deploy
 
 ---
 
-## 완료 조건
+## 주간 완료 조건
 
 기능 하나가 다음 전체 stack을 건드려야 한다.
 
-```text
-React
-
-Game Engine
-
-WebSocket
-
-Node.js
-
-Database
-
-Test
-
-CI
-
-Production
-```
+- [ ] React
+- [ ] Game Engine
+- [ ] WebSocket
+- [ ] Node.js
+- [ ] Database
+- [ ] Test
+- [ ] CI
+- [ ] Production
 
 ---
 
