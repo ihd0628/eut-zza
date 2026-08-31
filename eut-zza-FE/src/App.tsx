@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import "./App.css";
+import { TimerComparisonPlayground } from "./components/TimerComparisonPlayground";
 import { GameEngine } from "./game/GameEngine";
 
 function App() {
@@ -21,6 +22,7 @@ function App() {
         {isShowSample ? "Hide" : "Show"} Sample Game Loop
       </button>
       {isShowSample && <SampleGameEngine />}
+      <TimerComparisonPlayground />
     </div>
   );
 }
