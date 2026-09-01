@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import "./App.css";
-import { TimerComparisonPlayground } from "./components/TimerComparisonPlayground";
+import { AsyncPlayground } from "./components/experiments/AsyncPlayground";
+import { TaskPlayground } from "./components/experiments/TaskPlayground";
+import { TimerComparisonPlayground } from "./components/experiments/TimerComparisonPlayground";
 import { GameEngine } from "./game/GameEngine";
 
 function App() {
@@ -23,6 +25,8 @@ function App() {
       </button>
       {isShowSample && <SampleGameEngine />}
       <TimerComparisonPlayground />
+      <TaskPlayground />
+      <AsyncPlayground />
     </div>
   );
 }

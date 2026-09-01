@@ -384,8 +384,8 @@ CPU에 부하를 준 상태에서도 timer가 얼마나 밀리는지 측정한�
 ## 주간 완료 조건
 
 - [x] Event Loop를 그림 없이 설명할 수 있다.
-- [ ] Task와 Microtask 차이를 설명할 수 있다.
-- [ ] `await` 이후 코드가 언제 실행되는지 설명할 수 있다.
+- [x] Task와 Microtask 차이를 설명할 수 있다.
+- [x] `await` 이후 코드가 언제 실행되는지 설명할 수 있다.
 - [x] `requestAnimationFrame` 기반 game loop를 구현했다.
 - [x] React render와 game loop를 분리했다.
 

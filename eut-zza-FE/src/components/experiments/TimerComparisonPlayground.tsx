@@ -2,7 +2,7 @@ import {
   runAnimationFrameExperiment,
   runIntervalExperiment,
   runTimeoutExperiment,
-} from "../experiments/TimerComparison";
+} from "../../experiments/TimerComparison";
 
 export const TimerComparisonPlayground = () => {
   return (
