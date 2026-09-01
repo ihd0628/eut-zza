@@ -416,9 +416,7 @@ CSSOM
 
 DOM + CSSOM
 ↓
-Render Tree
-↓
-Style Calculation
+Style Calculation + Render/Layout Tree 구성
 ↓
 Layout
 ↓
@@ -428,6 +426,12 @@ Rasterization
 ↓
 Composite
 ```
+
+위 흐름은 브라우저 렌더링을 이해하기 위한 단순화된 모델이다.
+Style Calculation은 DOM 요소에 CSS 규칙을 적용해 computed style을 계산하고,
+렌더링과 배치에 필요한 Render/Layout Tree를 구성하거나 갱신하는 과정과 밀접하게 연결된다.
+현대 브라우저의 구체적인 내부 단계와 자료구조는 구현에 따라 더 세분화될 수 있으며,
+화면 갱신마다 위의 모든 단계를 반드시 다시 수행하는 것은 아니다.
 
 그리고 다음 개념을 이해한다.
 
