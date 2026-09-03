@@ -168,6 +168,32 @@ Used Value
 Actual Value
 ```
 
+이것은 CSS 값의 **개념적 모델**이다. 브라우저가 Style Calculation 한 번에
+위 값을 모두 순서대로 확정한다는 뜻은 아니다. 속성마다 값을 확정할 수 있는
+시점도 다르다.
+
+이 문서에서 다루는 렌더링 파이프라인에 맞춰 단순화하면 다음과 같다.
+
+```text
+Style Calculation
+→ cascade, 상속 등을 반영해 어떤 선언이 적용되는지 결정하고,
+  Layout에 의존하지 않는 범위에서 Computed Value를 계산한다.
+
+Layout
+→ 부모 크기, 콘텐츠, viewport 같은 geometry 조건을 반영해
+  아직 남아 있던 값을 Used Value로 해석한다.
+  크기와 위치 같은 geometry 결과는 보통 CSS px 단위로 다뤄진다.
+
+Paint / Raster
+→ Used Value를 실제 화면에 그리는 과정에서 서브픽셀 처리, 반올림,
+  기기 픽셀 비율 등의 제약이 적용될 수 있다. 이를 Actual Value라는
+  개념과 연결해 이해할 수 있다.
+```
+
+따라서 `Actual Value`를 “Style Calculation의 최종 산출물” 또는 “항상 물리
+픽셀(px) 값”이라고 이해하면 안 된다. `color`, `display`, `font-family`처럼
+geometry가 아닌 속성도 있으므로 Layout이 모든 스타일 값을 px로 바꾸는 것도 아니다.
+
 예를 들어 다음 규칙을 생각한다.
 
 ```css
