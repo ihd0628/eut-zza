@@ -14,6 +14,7 @@
  * 이 파일에는 React 컴포넌트, JSX, useState를 넣지 않는다.
  */
 
+import { AudioManager } from "./AudioManager";
 import { CanvasRenderer } from "./CanvasRenderer";
 import { GameLoop } from "./GameLoop";
 import { InputManager } from "./InputManager";
@@ -24,36 +25,44 @@ export class GameEngine {
   private readonly inputManager: InputManager;
   private readonly renderer: CanvasRenderer;
   private readonly notes: Note[];
+  private readonly audioManager: AudioManager;
+  private readonly audioUrl: string;
 
-  private startTimestamp: number | null = null;
-
-  constructor(canvas: HTMLCanvasElement, notes: Note[]) {
+  constructor(canvas: HTMLCanvasElement, notes: Note[], audioUrl: string) {
+    this.audioManager = new AudioManager();
     this.renderer = new CanvasRenderer(canvas);
     this.notes = notes;
+    this.audioUrl = audioUrl;
 
     this.gameLoop = new GameLoop(this.handleFrame);
     this.inputManager = new InputManager(this.handleInput);
   }
 
-  start() {
+  async start(): Promise<void> {
+    // 먼저 AudioContext를 running 상태로 만들고
+    // 게임 시간 0의 기준을 저장한다.
+    await this.audioManager.start(this.audioUrl);
+
+    // 오디오 clock이 준비된 뒤 입력과 화면 갱신을 시작한다.
     this.inputManager.attach();
     this.gameLoop.start();
   }
   stop() {
+    // 화면 갱신과 입력 중단
     this.gameLoop.stop();
     this.inputManager.detach();
-    this.startTimestamp = null;
+  }
+  async dispose(): Promise<void> {
+    // stop() 실행
+    // AudioContext까지 완전히 종료
+    this.stop();
+    await this.audioManager.close();
   }
 
-  private handleFrame = (timestamp: number) => {
-    // 첫 번째 프레임의 timestamp를 게임 시작 시각으로 저장한다.
-    if (this.startTimestamp === null) {
-      this.startTimestamp = timestamp;
-    }
-
-    // requestAnimationFrame timestamp는 페이지 기준 시간이므로,
-    // 게임 시작 시각을 빼서 0부터 시작하는 게임 경과 시간으로 만든다.
-    const currentTimeMs = timestamp - this.startTimestamp;
+  private handleFrame = () => {
+    // requestAnimationFrame timestamp가 아니라
+    // AudioContext clock을 현재 게임 시간으로 사용한다.
+    const currentTimeMs = this.audioManager.getCurrentTimeMs();
 
     this.renderer.render(this.notes, currentTimeMs);
   };

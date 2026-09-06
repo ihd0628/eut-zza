@@ -6,6 +6,7 @@ import type { Note } from "../game/types";
 // CSS로 보이는 크기만 늘리는 것과 달리 width/height 속성은 실제 그리기 좌표계를 정한다.
 const CANVAS_WIDTH = 480;
 const CANVAS_HEIGHT = 720;
+const AUDIO_URL = "/audio/sallang-sallang-jeju-gil.mp3";
 
 const SAMPLE_NOTES: Note[] = [
   { id: "note-1", laneIndex: 0, hitTimeMs: 2000 },
@@ -24,18 +25,32 @@ export const GameCanvas = () => {
   // 첫 React render 시점에는 아직 <canvas> DOM이 생성되기 전이므로 초기값은 null이다.
   // React commit이 끝나면 React가 canvasRef.current에 실제 HTMLCanvasElement를 넣어준다.
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const gameEngineRef = useRef<GameEngine | null>(null);
 
-  useEffect(() => {
+  const handleStart = async (): Promise<void> => {
     const canvas = canvasRef.current;
 
-    if (canvas === null) return;
+    // Canvas가 없거나 게임이 이미 시작됐다면 중복 실행하지 않는다.
+    if (canvas === null || gameEngineRef.current !== null) {
+      return;
+    }
 
-    const gameEngine = new GameEngine(canvas, SAMPLE_NOTES);
+    // 이 함수는 버튼 클릭으로 실행되므로
+    // AudioContext.resume()도 사용자 동작 안에서 호출된다.
+    const gameEngine = new GameEngine(canvas, SAMPLE_NOTES, AUDIO_URL);
 
-    gameEngine.start();
+    gameEngineRef.current = gameEngine;
 
+    await gameEngine.start();
+  };
+
+  useEffect(() => {
     return () => {
-      gameEngine.stop();
+      const gameEngine = gameEngineRef.current;
+
+      if (gameEngine !== null) {
+        void gameEngine.dispose();
+      }
     };
   }, []);
 
@@ -44,9 +59,18 @@ export const GameCanvas = () => {
       style={{
         display: "grid",
         placeItems: "center",
+        gap: "12px",
         padding: "24px",
       }}
     >
+      <button
+        type='button'
+        onClick={() => {
+          void handleStart();
+        }}
+      >
+        게임 시작
+      </button>
       <canvas
         ref={canvasRef}
         // HTML 속성인 width와 height가 Canvas 내부 픽셀 좌표계의 크기를 결정한다.
