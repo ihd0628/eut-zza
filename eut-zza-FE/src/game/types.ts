@@ -33,3 +33,5 @@ export interface Note {
   laneIndex: LaneIndex;
   hitTimeMs: number;
 }
+
+export type Judgment = "PERFECT" | "GREAT" | "GOOD" | "MISS";

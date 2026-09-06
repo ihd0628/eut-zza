@@ -52,13 +52,27 @@ export class CanvasRenderer {
    * 나중에 그린 것이 먼저 그린 픽셀 위를 덮는 방식이다.
    * 그림 그리는 순서를 뒤쪽에서 앞쪽으로 배치한 거다.
    */
-  render(notes: Note[], currentTimeMs: number): void {
+  render(notes: readonly Note[], currentTimeMs: number): void {
     this.clear();
     this.drawBackground();
     this.drawLanes();
     this.drawNotes(notes, currentTimeMs);
     this.drawJudgmentLine();
     this.drawLaneLabels();
+  }
+
+  /**
+   * 노트의 아래쪽 끝이 Canvas 위쪽에 처음 걸치는 시점부터
+   * 판정 시각까지 남은 시간을 반환한다.
+   *
+   * GameEngine은 이 값을 이용해 아직 화면에 들어오지 않은
+   * 먼 미래의 노트를 렌더링 대상에서 제외한다.
+   */
+  getNoteRenderLookaheadMs(): number {
+    const judgmentLineY =
+      this.canvas.height - JUDGMENT_LINE_BOTTOM_OFFSET;
+
+    return (judgmentLineY + NOTE_HEIGHT / 2) / NOTE_SPEED_PX_PER_MS;
   }
 
   /** 이전 프레임의 모든 픽셀을 투명하게 지운다. */
@@ -190,7 +204,7 @@ export class CanvasRenderer {
     this.context.fillRect(noteX, noteY, noteWidth, NOTE_HEIGHT);
   }
 
-  private drawNotes(notes: Note[], currentTimeMs: number): void {
+  private drawNotes(notes: readonly Note[], currentTimeMs: number): void {
     notes.forEach((note) => {
       const judgmentLineY = this.canvas.height - JUDGMENT_LINE_BOTTOM_OFFSET;
 
