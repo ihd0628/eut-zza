@@ -533,7 +533,7 @@ Judgment
 
 - [x] Canvas에 노트가 내려온다.
 - [x] D/F/J/K 입력을 받을 수 있다.
-- [ ] Web Audio clock을 기준으로 판정한다.
+- [x] Web Audio clock을 기준으로 판정한다.
 - [ ] PERFECT/GREAT/GOOD/MISS가 구현됐다.
 - [ ] 60Hz/120Hz에 따라 게임 판정이 달라지지 않는다.
 - [ ] React가 여러 번 렌더링되어도 음악 timing은 영향을 받지 않는다.
