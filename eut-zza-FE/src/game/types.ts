@@ -25,3 +25,11 @@ export interface GameInputEvent {
 }
 
 export type InputCallback = (event: GameInputEvent) => void;
+
+export type LaneIndex = 0 | 1 | 2 | 3;
+
+export interface Note {
+  id: string;
+  laneIndex: LaneIndex;
+  hitTimeMs: number;
+}

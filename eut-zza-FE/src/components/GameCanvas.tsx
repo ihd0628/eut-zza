@@ -1,10 +1,18 @@
 import { useEffect, useRef } from "react";
-import { CanvasRenderer } from "../game/CanvasRenderer";
+import { GameEngine } from "../game/GameEngine";
+import type { Note } from "../game/types";
 
 // 이 숫자들은 Canvas 내부 그림판(backing store)의 크기다.
 // CSS로 보이는 크기만 늘리는 것과 달리 width/height 속성은 실제 그리기 좌표계를 정한다.
 const CANVAS_WIDTH = 480;
 const CANVAS_HEIGHT = 720;
+
+const SAMPLE_NOTES: Note[] = [
+  { id: "note-1", laneIndex: 0, hitTimeMs: 2000 },
+  { id: "note-2", laneIndex: 1, hitTimeMs: 3000 },
+  { id: "note-3", laneIndex: 2, hitTimeMs: 4000 },
+  { id: "note-4", laneIndex: 3, hitTimeMs: 5000 },
+];
 
 /**
  * React에서 실제 <canvas> DOM 요소를 만들고 CanvasRenderer에 전달하는 컴포넌트다.
@@ -20,18 +28,15 @@ export const GameCanvas = () => {
   useEffect(() => {
     const canvas = canvasRef.current;
 
-    // 정상적으로 mount됐다면 canvas가 존재한다.
-    // 그래도 null 가능성을 검사해야 TypeScript와 런타임 모두에서 안전하다.
     if (canvas === null) return;
 
-    // 실제 DOM이 준비된 뒤 Renderer를 생성한다.
-    const renderer = new CanvasRenderer(canvas);
+    const gameEngine = new GameEngine(canvas, SAMPLE_NOTES);
 
-    // 이번 단계에서는 애니메이션 없이 정적인 게임판을 한 번만 그린다.
-    renderer.render();
+    gameEngine.start();
 
-    // 현재 Renderer는 Timer, Event Listener 같은 외부 자원을 만들지 않으므로
-    // useEffect cleanup이 필요하지 않다. 이후 GameLoop을 연결할 때는 stop()이 필요하다.
+    return () => {
+      gameEngine.stop();
+    };
   }, []);
 
   return (

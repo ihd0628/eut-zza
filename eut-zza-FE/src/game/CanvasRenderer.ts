@@ -6,12 +6,18 @@
  * 따라서 이 파일에는 React, JSX, useState 같은 개념이 들어가지 않는다.
  */
 
+import type { LaneIndex, Note } from "./types";
+
 // 네 개의 레인에 표시할 키다.
 // `as const`를 붙이면 단순한 string[]이 아니라 읽기 전용 리터럴 목록으로 추론된다.
 const GAME_KEYS = ["D", "F", "J", "K"] as const;
 
 // 판정선은 Canvas 아래쪽에서 100px 위에 배치한다.
 const JUDGMENT_LINE_BOTTOM_OFFSET = 100;
+
+const NOTE_HEIGHT = 24;
+const NOTE_HORIZONTAL_PADDING = 8;
+const NOTE_SPEED_PX_PER_MS = 0.2;
 
 export class CanvasRenderer {
   // HTMLCanvasElement는 페이지에 존재하는 실제 <canvas> DOM 요소다.
@@ -46,10 +52,11 @@ export class CanvasRenderer {
    * 나중에 그린 것이 먼저 그린 픽셀 위를 덮는 방식이다.
    * 그림 그리는 순서를 뒤쪽에서 앞쪽으로 배치한 거다.
    */
-  render(): void {
+  render(notes: Note[], currentTimeMs: number): void {
     this.clear();
     this.drawBackground();
     this.drawLanes();
+    this.drawNotes(notes, currentTimeMs);
     this.drawJudgmentLine();
     this.drawLaneLabels();
   }
@@ -162,6 +169,38 @@ export class CanvasRenderer {
       const labelY = this.canvas.height - JUDGMENT_LINE_BOTTOM_OFFSET / 2;
 
       this.context.fillText(key, labelX, labelY);
+    });
+  }
+
+  private drawNote(laneIndex: LaneIndex, centerY: number): void {
+    const laneWidth = this.canvas.width / GAME_KEYS.length;
+
+    // laneIndex에 해당하는 레인의 왼쪽 x 좌표를 구하고,
+    // 레인 경계선에 붙지 않도록 좌우 여백을 더한다.
+    const noteX = laneIndex * laneWidth + NOTE_HORIZONTAL_PADDING;
+
+    // centerY를 노트의 중앙 좌표로 사용하기 위해
+    // 노트 높이의 절반만큼 위에서부터 사각형을 그린다.
+    const noteY = centerY - NOTE_HEIGHT / 2;
+
+    // 좌우 여백만큼 노트 너비를 줄인다.
+    const noteWidth = laneWidth - NOTE_HORIZONTAL_PADDING * 2;
+
+    this.context.fillStyle = "#38bdf8";
+    this.context.fillRect(noteX, noteY, noteWidth, NOTE_HEIGHT);
+  }
+
+  private drawNotes(notes: Note[], currentTimeMs: number): void {
+    notes.forEach((note) => {
+      const judgmentLineY = this.canvas.height - JUDGMENT_LINE_BOTTOM_OFFSET;
+
+      // 이 노트가 판정선에 도착할 때까지 남은 시간
+      const timeUntilHitMs = note.hitTimeMs - currentTimeMs;
+
+      // 남은 시간만큼 판정선에서 위쪽으로 노트를 배치한다.
+      const noteCenterY = judgmentLineY - timeUntilHitMs * NOTE_SPEED_PX_PER_MS;
+
+      this.drawNote(note.laneIndex, noteCenterY);
     });
   }
 }

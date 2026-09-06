@@ -14,16 +14,23 @@
  * 이 파일에는 React 컴포넌트, JSX, useState를 넣지 않는다.
  */
 
+import { CanvasRenderer } from "./CanvasRenderer";
 import { GameLoop } from "./GameLoop";
 import { InputManager } from "./InputManager";
-import type { GameInputEvent } from "./types";
+import type { GameInputEvent, Note } from "./types";
 
 export class GameEngine {
   private readonly gameLoop: GameLoop;
   private readonly inputManager: InputManager;
-  private lastLoggedAt = 0;
+  private readonly renderer: CanvasRenderer;
+  private readonly notes: Note[];
 
-  constructor() {
+  private startTimestamp: number | null = null;
+
+  constructor(canvas: HTMLCanvasElement, notes: Note[]) {
+    this.renderer = new CanvasRenderer(canvas);
+    this.notes = notes;
+
     this.gameLoop = new GameLoop(this.handleFrame);
     this.inputManager = new InputManager(this.handleInput);
   }
@@ -35,14 +42,20 @@ export class GameEngine {
   stop() {
     this.gameLoop.stop();
     this.inputManager.detach();
+    this.startTimestamp = null;
   }
 
-  private handleFrame = (timestamp: number, deltaTime: number) => {
-    if (timestamp - this.lastLoggedAt < 1000) return;
+  private handleFrame = (timestamp: number) => {
+    // 첫 번째 프레임의 timestamp를 게임 시작 시각으로 저장한다.
+    if (this.startTimestamp === null) {
+      this.startTimestamp = timestamp;
+    }
 
-    this.lastLoggedAt = timestamp;
-    console.log("timestamp : ", timestamp);
-    console.log("deltaTime : ", deltaTime);
+    // requestAnimationFrame timestamp는 페이지 기준 시간이므로,
+    // 게임 시작 시각을 빼서 0부터 시작하는 게임 경과 시간으로 만든다.
+    const currentTimeMs = timestamp - this.startTimestamp;
+
+    this.renderer.render(this.notes, currentTimeMs);
   };
   private handleInput = (event: GameInputEvent) => {
     console.log(event);
