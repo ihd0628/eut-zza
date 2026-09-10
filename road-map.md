@@ -675,7 +675,7 @@ GET /songs/:id
 ## 주간 완료 조건
 
 - [ ] URL 입력부터 HTTP response까지 설명할 수 있다.
-- [ ] Node.js 기본 HTTP server를 직접 만들었다.
+- [x] Node.js 기본 HTTP server를 직접 만들었다.
 - [ ] Fastify를 이용한 REST API를 만들었다.
 - [ ] Browser → API Server 흐름을 이해한다.
 - [ ] CORS가 왜 존재하는지 설명할 수 있다.
