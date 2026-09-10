@@ -1,19 +1,11 @@
 import { useEffect, useRef } from "react";
+import { AUDIO_URL, SAMPLE_NOTES } from "../constants";
 import { GameEngine } from "../game/GameEngine";
-import type { Note } from "../game/types";
 
 // 이 숫자들은 Canvas 내부 그림판(backing store)의 크기다.
 // CSS로 보이는 크기만 늘리는 것과 달리 width/height 속성은 실제 그리기 좌표계를 정한다.
 const CANVAS_WIDTH = 480;
 const CANVAS_HEIGHT = 720;
-const AUDIO_URL = "/audio/sallang-sallang-jeju-gil.mp3";
-
-const SAMPLE_NOTES: Note[] = [
-  { id: "note-1", laneIndex: 0, hitTimeMs: 2000 },
-  { id: "note-2", laneIndex: 1, hitTimeMs: 3000 },
-  { id: "note-3", laneIndex: 2, hitTimeMs: 4000 },
-  { id: "note-4", laneIndex: 3, hitTimeMs: 5000 },
-];
 
 /**
  * React에서 실제 <canvas> DOM 요소를 만들고 CanvasRenderer에 전달하는 컴포넌트다.
