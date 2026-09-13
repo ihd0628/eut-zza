@@ -12,6 +12,21 @@ Week 3의 HTTP, Network, Node.js 학습을 위한 백엔드 프로젝트다.
 npm run dev
 ```
 
+위 명령은 학습용 raw Node.js 서버를 `127.0.0.1:3000`에서 실행한다.
+Fastify 비교 서버는 별도의 터미널에서 다음 명령으로 실행한다.
+
+```bash
+npm run dev:fastify
+```
+
+Fastify 서버는 `127.0.0.1:3001`을 사용하므로 두 서버를 동시에 실행하고
+같은 `/health` 응답을 비교할 수 있다.
+
+```bash
+curl -i http://127.0.0.1:3000/health
+curl -i http://127.0.0.1:3001/health
+```
+
 다른 터미널이나 브라우저에서 다음 주소로 요청한다.
 
 ```text
