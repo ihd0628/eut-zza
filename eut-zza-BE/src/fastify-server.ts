@@ -1,8 +1,10 @@
+import cors from "@fastify/cors";
 import Fastify from "fastify";
 
 const HOST = "127.0.0.1";
 const PORT = 3001;
 const MAX_REQUEST_BODY_BYTES = 16 * 1024;
+const FRONTEND_ORIGIN = "http://localhost:5173";
 
 type CredentialsRequestBody = {
   email: string;
@@ -57,6 +59,10 @@ const server = Fastify({
 // Fastify는 기본적으로 application/json뿐 아니라 text/plain도 읽을 수 있다. 하지만 현재 인증 API는 JSON 전용이므로 text/plain 파서를 제거한다.
 // 그러면 Content-Type: text/plain 요청은 자동으로 415 Unsupported Media Type이 된다
 server.removeContentTypeParser("text/plain");
+
+await server.register(cors, {
+  origin: FRONTEND_ORIGIN,
+});
 
 // raw 서버에서 method와 pathname을 직접 비교했던 작업을
 // Fastify의 get() 메서드가 라우트 등록 형태로 대신한다.

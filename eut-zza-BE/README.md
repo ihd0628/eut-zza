@@ -2,7 +2,9 @@
 
 Week 3의 HTTP, Network, Node.js 학습을 위한 백엔드 프로젝트다.
 
-처음부터 Fastify를 사용하지 않고 Node.js 내장 `node:http` 모듈로 서버를 만든다. 프레임워크가 대신 처리해 주는 HTTP 요청과 응답의 기본 구조를 먼저 확인하는 것이 목적이다.
+처음부터 Fastify를 사용하지 않고 Node.js 내장 `node:http` 모듈로 서버를
+만든 뒤 같은 API를 Fastify로 다시 구현한다. 프레임워크가 대신 처리하는
+HTTP 요청과 응답의 기본 구조를 비교하는 것이 목적이다.
 
 ## 실행 방법
 
@@ -54,6 +56,16 @@ curl -i http://127.0.0.1:3000/health
 curl -i http://127.0.0.1:3000/unknown
 ```
 
+## 학습 문서
+
+Week 3 문서의 목차와 학습 순서는 다음 파일에서 확인한다.
+
+- [`docs/week3/README.md`](./docs/week3/README.md)
+- [`docs/week3/raw-node-http-server-and-streams.md`](./docs/week3/raw-node-http-server-and-streams.md)
+- [`docs/week3/fastify-rest-api.md`](./docs/week3/fastify-rest-api.md)
+- [`docs/week3/cors-same-origin-and-preflight.md`](./docs/week3/cors-same-origin-and-preflight.md)
+- [`docs/week3/local-url-to-http-response-and-host.md`](./docs/week3/local-url-to-http-response-and-host.md)
+
 ## 현재 엔드포인트
 
 ```text
@@ -82,9 +94,9 @@ POST /auth/login
 
 ## 아직 의도적으로 넣지 않은 것
 
-- Fastify
-- CORS Header
 - 데이터베이스
+- 비밀번호 hashing
 - 실제 사용자 저장 및 인증
+- Cookie, Session, JWT
 
 각 기능은 기본 HTTP 흐름을 확인한 다음 로드맵 순서대로 추가한다.
