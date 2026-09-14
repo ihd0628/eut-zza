@@ -27,6 +27,8 @@ Same-Origin Policy와 CORS 실패 관찰
 CORS 허용 및 Preflight 관찰
 ↓
 로컬 URL에서 HTTP Response까지 추적
+↓
+외부 HTTPS의 DNS·TCP·TLS·Reverse Proxy 흐름 추적
 ```
 
 ## 문서 목록
@@ -86,6 +88,31 @@ CORS 허용 및 Preflight 관찰
 - HTTP Response와 TCP connection 종료의 차이
 - 로컬 요청에서 DNS, TLS, Reverse Proxy가 생략된 이유
 
+### 5. [외부 HTTPS 요청: DNS, TCP, TLS, Reverse Proxy](./https-dns-tcp-tls-reverse-proxy.md)
+
+다음 내용을 정리한다.
+
+- `dig`로 확인한 A record, DNS resolver, TTL
+- curl이 IPv6와 443번 port로 TCP connection을 만든 과정
+- ALPN과 HTTP/1.1 협상
+- TLS 1.3 Handshake와 server 인증서 검증
+- Diffie–Hellman/ECDHE로 같은 shared secret을 계산하는 원리
+- 인증서 key와 임시 key share의 차이
+- Reverse Proxy와 application server 사이의 별도 connection
+- DNS부터 Browser가 Fastify Response를 받기까지의 전체 흐름
+
+### 6. [Cookie, Authorization, Cache-Control, ETag](./http-cookie-authorization-and-cache.md)
+
+다음 내용을 정리한다.
+
+- `Set-Cookie` Response와 `Cookie` Request의 방향
+- Cookie와 로그인 session의 차이
+- `Authorization` Header와 Authentication·Authorization의 차이
+- Browser private cache, CDN shared cache, application cache의 위치와 책임
+- `Cache-Control` directive의 의미
+- `ETag`, `If-None-Match`, `304 Not Modified`의 재검증 흐름
+- curl이 Browser cache를 자동으로 흉내 내지는 않는다는 주의점
+
 ## 관련 코드
 
 - [`src/server.ts`](../../src/server.ts): raw Node.js HTTP server
@@ -106,11 +133,11 @@ POST /auth/login
 Cookie, Session, JWT도 사용하지 않는다. 실제 Authentication은 Week 5에서
 구현한다.
 
-## 아직 남은 Week 3 학습
+## Week 3 종료 후 보강할 내용
 
-- 외부 HTTPS URL의 DNS, transport, TLS, Reverse Proxy 전체 흐름
 - HTTP/1.1, HTTP/2, HTTP/3의 구조적 차이
-- Cookie, Cache-Control, ETag, Authorization의 역할
+- Fastify와 Browser에서 ETag 조건부 Request 실험
+- Week 5의 Cookie·Session·JWT 인증 구현
 
-완료 조건은 단순히 코드를 실행한 것이 아니라 각 흐름을 자신의 말로
-설명할 수 있는 상태다.
+Week 3의 주간 완료 조건은 모두 충족했다. 위 항목은 해당 기능을 실제로
+도입하는 후속 주차에서 실험한다.

@@ -417,7 +417,7 @@ HTTP Response
 ```
 
 이 부분은 HTTP/1.1, HTTP/2, HTTP/3 비교와 함께 Week 3의 다음 학습에서
-확장한다.
+[외부 HTTPS 요청 문서](./https-dns-tcp-tls-reverse-proxy.md)로 확장했다.
 
 ## 15. 핵심 결론
 

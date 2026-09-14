@@ -65,6 +65,8 @@ Week 3 문서의 목차와 학습 순서는 다음 파일에서 확인한다.
 - [`docs/week3/fastify-rest-api.md`](./docs/week3/fastify-rest-api.md)
 - [`docs/week3/cors-same-origin-and-preflight.md`](./docs/week3/cors-same-origin-and-preflight.md)
 - [`docs/week3/local-url-to-http-response-and-host.md`](./docs/week3/local-url-to-http-response-and-host.md)
+- [`docs/week3/https-dns-tcp-tls-reverse-proxy.md`](./docs/week3/https-dns-tcp-tls-reverse-proxy.md)
+- [`docs/week3/http-cookie-authorization-and-cache.md`](./docs/week3/http-cookie-authorization-and-cache.md)
 
 ## 현재 엔드포인트
 
