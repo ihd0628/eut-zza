@@ -58,7 +58,11 @@ curl -i http://127.0.0.1:3000/unknown
 
 ## 학습 문서
 
-Week 3 문서의 목차와 학습 순서는 다음 파일에서 확인한다.
+주차별 문서의 목차와 학습 순서는 다음 파일에서 확인한다.
+
+- [`docs/week4/README.md`](./docs/week4/README.md): PostgreSQL, SQL, 인덱스, 트랜잭션과 동시성 실험
+
+Week 3의 HTTP·Network·Node.js 문서는 다음과 같다.
 
 - [`docs/week3/README.md`](./docs/week3/README.md)
 - [`docs/week3/raw-node-http-server-and-streams.md`](./docs/week3/raw-node-http-server-and-streams.md)
