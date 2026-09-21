@@ -190,8 +190,10 @@ user_id | email               | best_score | play_count
 [복합 인덱스 실험](./composite-index-lab.md)은 첫 번째에 가까운 단순 조회다.
 그 인덱스 하나로 위 사용자별 집계 랭킹까지 그대로 해결된다고 단정하지 않는다.
 
-현재 SQL의 기준은 `beatmap_id = 1`이다. 향후 `GET /songs/:id/ranking` 구현에서는
-같은 곡의 다른 난이도를 어떻게 구분할지도 정해야 한다.
+이 절의 psql 실험에서는 `beatmap_id = 1`을 기준으로 사용했다.
+이후 9월 21일 구현한 `GET /songs/:id/ranking`에서는 곡 ID와 `difficulty`
+쿼리 파라미터로 구분했다. 실제 API SQL의 한 줄씩 설명과 최신 결과는
+[랭킹·경기 기록 API 문서](./ranking-and-history-apis.md)에 이어서 기록했다.
 
 ## 핵심 결론
 
