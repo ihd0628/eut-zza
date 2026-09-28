@@ -3,7 +3,14 @@ import {
   createUser,
   findUserByEmail,
 } from "../repositories/user-repository.js";
+import { createSession } from "../repositories/session-repository.js";
 import { hashPassword, verifyPassword } from "../security/password.js";
+import {
+  createSessionToken,
+  hashSessionToken,
+} from "../security/session-token.js";
+
+const SESSION_DURATION_MS = 7 * 24 * 60 * 60 * 1000;
 
 type SignUpInput = {
   email: string;
@@ -13,6 +20,12 @@ type SignUpInput = {
 type LoginInput = {
   email: string;
   password: string;
+};
+
+type LoginResult = {
+  user: User;
+  sessionToken: string;
+  expiresAt: Date;
 };
 
 export class InvalidCredentialsError extends Error {
@@ -35,7 +48,7 @@ export const signUp = async (input: SignUpInput): Promise<User> => {
   });
 };
 
-export const login = async (input: LoginInput): Promise<User> => {
+export const login = async (input: LoginInput): Promise<LoginResult> => {
   const normalizedEmail = input.email.trim().toLowerCase();
   const user = await findUserByEmail(normalizedEmail);
 
@@ -52,9 +65,22 @@ export const login = async (input: LoginInput): Promise<User> => {
     throw new InvalidCredentialsError();
   }
 
-  // passwordHash가 Route 응답에 포함되지 않도록 공개 필드만 새 객체로 반환한다.
+  const sessionToken = createSessionToken();
+  const expiresAt = new Date(Date.now() + SESSION_DURATION_MS);
+
+  await createSession({
+    userId: user.id,
+    tokenHash: hashSessionToken(sessionToken),
+    expiresAt,
+  });
+
+  // passwordHash와 DB에 저장한 tokenHash는 Route 응답에 포함하지 않는다.
   return {
-    id: user.id,
-    email: user.email,
+    user: {
+      id: user.id,
+      email: user.email,
+    },
+    sessionToken,
+    expiresAt,
   };
 };
