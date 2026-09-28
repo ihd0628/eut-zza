@@ -1,8 +1,14 @@
 import type { FastifyPluginAsync } from "fastify";
+import {
+  SESSION_COOKIE_NAME,
+  SESSION_MAX_AGE_SECONDS,
+} from "../domain/session.js";
 import { EmailAlreadyInUseError } from "../domain/user.js";
 import {
-  AuthenticationRequiredError,
-  getCurrentUser,
+  authenticateRequest,
+  getAuthenticatedRequestUser,
+} from "../hooks/authentication.js";
+import {
   InvalidCredentialsError,
   login,
   logout,
@@ -13,9 +19,6 @@ type CredentialsRequestBody = {
   email: string;
   password: string;
 };
-
-const SESSION_COOKIE_NAME = "eut_zza_session";
-const SESSION_MAX_AGE_SECONDS = 7 * 24 * 60 * 60;
 
 const loginBodySchema = {
   type: "object",
@@ -117,25 +120,17 @@ export const authRoutes: FastifyPluginAsync = async (server) => {
     },
   );
 
-  server.get("/auth/me", async (request, reply) => {
-    try {
-      const user = await getCurrentUser(
-        request.cookies[SESSION_COOKIE_NAME],
-      );
-
+  server.get(
+    "/auth/me",
+    {
+      preHandler: authenticateRequest,
+    },
+    async (request) => {
       return {
-        user,
+        user: getAuthenticatedRequestUser(request),
       };
-    } catch (error: unknown) {
-      if (error instanceof AuthenticationRequiredError) {
-        return reply.code(401).send({
-          error: error.message,
-        });
-      }
-
-      throw error;
-    }
-  });
+    },
+  );
 
   server.post("/auth/logout", async (request, reply) => {
     await logout(request.cookies[SESSION_COOKIE_NAME]);

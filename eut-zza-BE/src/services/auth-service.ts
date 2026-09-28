@@ -1,3 +1,4 @@
+import { SESSION_DURATION_MS } from "../domain/session.js";
 import type { User } from "../domain/user.js";
 import {
   createUser,
@@ -13,8 +14,6 @@ import {
   createSessionToken,
   hashSessionToken,
 } from "../security/session-token.js";
-
-const SESSION_DURATION_MS = 7 * 24 * 60 * 60 * 1000;
 
 type SignUpInput = {
   email: string;

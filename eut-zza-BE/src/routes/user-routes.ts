@@ -1,6 +1,13 @@
 import type { FastifyPluginAsync } from "fastify";
 import { UserNotFoundError } from "../domain/user.js";
-import { getUserScores } from "../services/user-service.js";
+import {
+  authenticateRequest,
+  getAuthenticatedRequestUser,
+} from "../hooks/authentication.js";
+import {
+  getAuthenticatedUserScores,
+  getUserScores,
+} from "../services/user-service.js";
 
 type UserParams = {
   id: string;
@@ -20,6 +27,22 @@ const userParamsSchema = {
 } as const;
 
 export const userRoutes: FastifyPluginAsync = async (server) => {
+  server.get(
+    "/users/me/scores",
+    {
+      preHandler: authenticateRequest,
+    },
+    async (request) => {
+      const user = getAuthenticatedRequestUser(request);
+      const scores = await getAuthenticatedUserScores(user.id);
+
+      return {
+        userId: user.id,
+        scores,
+      };
+    },
+  );
+
   server.get<{ Params: UserParams }>(
     "/users/:id/scores",
     {

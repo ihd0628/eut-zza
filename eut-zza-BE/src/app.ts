@@ -29,6 +29,9 @@ export const buildApp = async (): Promise<FastifyInstance> => {
     credentials: true,
   });
 
+  // 각 요청마다 인증된 사용자를 안전하게 저장할 자리를 만든다.
+  app.decorateRequest("authenticatedUser", null);
+
   await app.register(healthRoutes);
   await app.register(authRoutes);
   await app.register(songRoutes);
