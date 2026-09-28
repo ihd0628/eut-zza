@@ -24,6 +24,15 @@ export type UserScoreEntry = {
   maxCombo: number;
 };
 
+export type UserBestScoreEntry = {
+  songId: string;
+  songTitle: string;
+  beatmapId: string;
+  difficulty: Difficulty;
+  bestScore: number;
+  playCount: number;
+};
+
 // PostgreSQL의 오류 코드나 제약 조건 이름을 외부 계층에 노출하지 않기 위해
 // Repository가 DB 오류를 아래 애플리케이션 오류로 변환한다.
 export class ScoreAlreadyExistsError extends Error {

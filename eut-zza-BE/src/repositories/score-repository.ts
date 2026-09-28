@@ -5,6 +5,7 @@ import {
   ScoreAlreadyExistsError,
   type CreateScoreInput,
   type Score,
+  type UserBestScoreEntry,
   type UserScoreEntry,
 } from "../domain/score.js";
 
@@ -116,6 +117,42 @@ export const findScoresByUserId = async (
         AND gs.status = 'completed'
       ORDER BY gs.ended_at DESC NULLS LAST, sc.id DESC
       LIMIT 20
+    `,
+    [userId],
+  );
+
+  return result.rows;
+};
+
+export const findBestScoresByUserId = async (
+  userId: string,
+): Promise<UserBestScoreEntry[]> => {
+  const result = await pool.query<UserBestScoreEntry>(
+    `
+      SELECT
+        so.id AS "songId",
+        so.title AS "songTitle",
+        b.id AS "beatmapId",
+        b.difficulty,
+        MAX(sc.score) AS "bestScore",
+        COUNT(*)::integer AS "playCount"
+      FROM scores AS sc
+      JOIN game_players AS gp
+        ON gp.id = sc.game_player_id
+      JOIN game_sessions AS gs
+        ON gs.id = gp.game_session_id
+      JOIN beatmaps AS b
+        ON b.id = gs.beatmap_id
+      JOIN songs AS so
+        ON so.id = b.song_id
+      WHERE gp.user_id = $1
+        AND gs.status = 'completed'
+      GROUP BY
+        so.id,
+        so.title,
+        b.id,
+        b.difficulty
+      ORDER BY MAX(sc.score) DESC, b.id ASC
     `,
     [userId],
   );

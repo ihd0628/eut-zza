@@ -1,6 +1,12 @@
-import type { UserScoreEntry } from "../domain/score.js";
+import type {
+  UserBestScoreEntry,
+  UserScoreEntry,
+} from "../domain/score.js";
 import { UserNotFoundError } from "../domain/user.js";
-import { findScoresByUserId } from "../repositories/score-repository.js";
+import {
+  findBestScoresByUserId,
+  findScoresByUserId,
+} from "../repositories/score-repository.js";
 import { findUserById } from "../repositories/user-repository.js";
 
 export const getUserScores = async (
@@ -21,4 +27,10 @@ export const getAuthenticatedUserScores = async (
 ): Promise<UserScoreEntry[]> => {
   // 세션 인증 단계에서 존재하는 사용자임을 확인했으므로 다시 조회하지 않는다.
   return findScoresByUserId(userId);
+};
+
+export const getAuthenticatedUserBestScores = async (
+  userId: string,
+): Promise<UserBestScoreEntry[]> => {
+  return findBestScoresByUserId(userId);
 };

@@ -5,6 +5,7 @@ import {
   getAuthenticatedRequestUser,
 } from "../hooks/authentication.js";
 import {
+  getAuthenticatedUserBestScores,
   getAuthenticatedUserScores,
   getUserScores,
 } from "../services/user-service.js";
@@ -27,6 +28,22 @@ const userParamsSchema = {
 } as const;
 
 export const userRoutes: FastifyPluginAsync = async (server) => {
+  server.get(
+    "/users/me/best-scores",
+    {
+      preHandler: authenticateRequest,
+    },
+    async (request) => {
+      const user = getAuthenticatedRequestUser(request);
+      const bestScores = await getAuthenticatedUserBestScores(user.id);
+
+      return {
+        userId: user.id,
+        bestScores,
+      };
+    },
+  );
+
   server.get(
     "/users/me/scores",
     {
