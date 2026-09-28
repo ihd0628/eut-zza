@@ -1,48 +1,78 @@
 import type { FastifyPluginAsync } from "fastify";
+import { EmailAlreadyInUseError } from "../domain/user.js";
+import {
+  InvalidCredentialsError,
+  login,
+  signUp,
+} from "../services/auth-service.js";
 
 type CredentialsRequestBody = {
   email: string;
   password: string;
 };
 
-const credentialsBodySchema = {
+const loginBodySchema = {
   type: "object",
   additionalProperties: false,
   required: ["email", "password"],
   properties: {
     email: {
       type: "string",
+      format: "email",
       minLength: 1,
+      maxLength: 254,
     },
     password: {
       type: "string",
       minLength: 1,
+      maxLength: 128,
     },
   },
 } as const;
 
-// 실제 인증을 구현하기 전까지 기존 API 동작을 유지하기 위한 임시 사용자다.
-const DEMO_USER = {
-  id: "user-1",
-  email: "test@example.com",
-  password: "1234",
-};
+const signUpBodySchema = {
+  type: "object",
+  additionalProperties: false,
+  required: ["email", "password"],
+  properties: {
+    email: {
+      type: "string",
+      format: "email",
+      minLength: 1,
+      maxLength: 254,
+    },
+    password: {
+      type: "string",
+      minLength: 8,
+      maxLength: 128,
+    },
+  },
+} as const;
 
 export const authRoutes: FastifyPluginAsync = async (server) => {
   server.post<{ Body: CredentialsRequestBody }>(
     "/auth/signup",
     {
       schema: {
-        body: credentialsBodySchema,
+        body: signUpBodySchema,
       },
     },
-    (request, reply) => {
-      return reply.code(201).send({
-        user: {
-          id: "user-1",
-          email: request.body.email,
-        },
-      });
+    async (request, reply) => {
+      try {
+        const user = await signUp(request.body);
+
+        return reply.code(201).send({
+          user,
+        });
+      } catch (error: unknown) {
+        if (error instanceof EmailAlreadyInUseError) {
+          return reply.code(409).send({
+            error: error.message,
+          });
+        }
+
+        throw error;
+      }
     },
   );
 
@@ -50,26 +80,25 @@ export const authRoutes: FastifyPluginAsync = async (server) => {
     "/auth/login",
     {
       schema: {
-        body: credentialsBodySchema,
+        body: loginBodySchema,
       },
     },
-    (request, reply) => {
-      const credentialsMatch =
-        request.body.email === DEMO_USER.email &&
-        request.body.password === DEMO_USER.password;
+    async (request, reply) => {
+      try {
+        const user = await login(request.body);
 
-      if (!credentialsMatch) {
-        return reply.code(401).send({
-          error: "Invalid email or password",
-        });
+        return {
+          user,
+        };
+      } catch (error: unknown) {
+        if (error instanceof InvalidCredentialsError) {
+          return reply.code(401).send({
+            error: error.message,
+          });
+        }
+
+        throw error;
       }
-
-      return {
-        user: {
-          id: DEMO_USER.id,
-          email: DEMO_USER.email,
-        },
-      };
     },
   );
 };
