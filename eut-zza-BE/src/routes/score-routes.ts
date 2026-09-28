@@ -2,8 +2,13 @@ import type { FastifyPluginAsync } from "fastify";
 import {
   GamePlayerNotFoundError,
   ScoreAlreadyExistsError,
+  ScoreSubmissionForbiddenError,
   type CreateScoreInput,
 } from "../domain/score.js";
+import {
+  authenticateRequest,
+  getAuthenticatedRequestUser,
+} from "../hooks/authentication.js";
 import { submitScore } from "../services/score-service.js";
 
 const nonNegativeIntegerSchema = {
@@ -43,13 +48,15 @@ export const scoreRoutes: FastifyPluginAsync = async (server) => {
   server.post<{ Body: CreateScoreInput }>(
     "/scores",
     {
+      preHandler: authenticateRequest,
       schema: {
         body: createScoreBodySchema,
       },
     },
     async (request, reply) => {
       try {
-        const score = await submitScore(request.body);
+        const user = getAuthenticatedRequestUser(request);
+        const score = await submitScore(user.id, request.body);
 
         return reply.code(201).send({
           score,
@@ -63,6 +70,12 @@ export const scoreRoutes: FastifyPluginAsync = async (server) => {
 
         if (error instanceof GamePlayerNotFoundError) {
           return reply.code(404).send({
+            error: error.message,
+          });
+        }
+
+        if (error instanceof ScoreSubmissionForbiddenError) {
+          return reply.code(403).send({
             error: error.message,
           });
         }

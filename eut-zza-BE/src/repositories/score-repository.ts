@@ -8,6 +8,25 @@ import {
   type UserScoreEntry,
 } from "../domain/score.js";
 
+type GamePlayerOwnerRow = {
+  userId: string;
+};
+
+export const findGamePlayerOwnerId = async (
+  gamePlayerId: string,
+): Promise<string | undefined> => {
+  const result = await pool.query<GamePlayerOwnerRow>(
+    `
+      SELECT user_id AS "userId"
+      FROM game_players
+      WHERE id = $1
+    `,
+    [gamePlayerId],
+  );
+
+  return result.rows[0]?.userId;
+};
+
 export const createScore = async (input: CreateScoreInput): Promise<Score> => {
   try {
     const result = await pool.query<Score>(

@@ -39,3 +39,10 @@ export class GamePlayerNotFoundError extends Error {
     this.name = "GamePlayerNotFoundError";
   }
 }
+
+export class ScoreSubmissionForbiddenError extends Error {
+  constructor() {
+    super("You cannot submit a score for this game player");
+    this.name = "ScoreSubmissionForbiddenError";
+  }
+}
