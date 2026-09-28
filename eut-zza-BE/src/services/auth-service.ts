@@ -3,7 +3,11 @@ import {
   createUser,
   findUserByEmail,
 } from "../repositories/user-repository.js";
-import { createSession } from "../repositories/session-repository.js";
+import {
+  createSession,
+  deleteSessionByTokenHash,
+  findUserBySessionTokenHash,
+} from "../repositories/session-repository.js";
 import { hashPassword, verifyPassword } from "../security/password.js";
 import {
   createSessionToken,
@@ -33,6 +37,14 @@ export class InvalidCredentialsError extends Error {
     // 이메일 존재 여부와 비밀번호 불일치를 동일하게 표현한다.
     super("Invalid email or password");
     this.name = "InvalidCredentialsError";
+  }
+}
+
+export class AuthenticationRequiredError extends Error {
+  constructor() {
+    // 쿠키 누락, 잘못된 토큰, 만료된 세션을 외부에 구분해서 노출하지 않는다.
+    super("Authentication required");
+    this.name = "AuthenticationRequiredError";
   }
 }
 
@@ -83,4 +95,33 @@ export const login = async (input: LoginInput): Promise<LoginResult> => {
     sessionToken,
     expiresAt,
   };
+};
+
+export const getCurrentUser = async (
+  sessionToken: string | undefined,
+): Promise<User> => {
+  if (sessionToken === undefined) {
+    throw new AuthenticationRequiredError();
+  }
+
+  const user = await findUserBySessionTokenHash(
+    hashSessionToken(sessionToken),
+  );
+
+  if (user === undefined) {
+    throw new AuthenticationRequiredError();
+  }
+
+  return user;
+};
+
+export const logout = async (
+  sessionToken: string | undefined,
+): Promise<void> => {
+  // 이미 쿠키가 없거나 세션이 삭제된 로그아웃 요청도 성공으로 처리한다.
+  if (sessionToken === undefined) {
+    return;
+  }
+
+  await deleteSessionByTokenHash(hashSessionToken(sessionToken));
 };

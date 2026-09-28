@@ -1,8 +1,11 @@
 import type { FastifyPluginAsync } from "fastify";
 import { EmailAlreadyInUseError } from "../domain/user.js";
 import {
+  AuthenticationRequiredError,
+  getCurrentUser,
   InvalidCredentialsError,
   login,
+  logout,
   signUp,
 } from "../services/auth-service.js";
 
@@ -113,4 +116,38 @@ export const authRoutes: FastifyPluginAsync = async (server) => {
       }
     },
   );
+
+  server.get("/auth/me", async (request, reply) => {
+    try {
+      const user = await getCurrentUser(
+        request.cookies[SESSION_COOKIE_NAME],
+      );
+
+      return {
+        user,
+      };
+    } catch (error: unknown) {
+      if (error instanceof AuthenticationRequiredError) {
+        return reply.code(401).send({
+          error: error.message,
+        });
+      }
+
+      throw error;
+    }
+  });
+
+  server.post("/auth/logout", async (request, reply) => {
+    await logout(request.cookies[SESSION_COOKIE_NAME]);
+
+    // 생성할 때와 같은 Path를 지정해야 브라우저가 기존 Cookie를 제거한다.
+    reply.clearCookie(SESSION_COOKIE_NAME, {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      path: "/",
+    });
+
+    return reply.code(204).send();
+  });
 };
