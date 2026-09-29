@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { AUDIO_URL, SAMPLE_NOTES } from "../constants";
 import { GameEngine } from "../game/GameEngine";
+import styles from "./GameCanvas.module.css";
 
 // 이 숫자들은 Canvas 내부 그림판(backing store)의 크기다.
 // CSS로 보이는 크기만 늘리는 것과 달리 width/height 속성은 실제 그리기 좌표계를 정한다.
@@ -47,15 +48,9 @@ export const GameCanvas = () => {
   }, []);
 
   return (
-    <section
-      style={{
-        display: "grid",
-        placeItems: "center",
-        gap: "12px",
-        padding: "24px",
-      }}
-    >
+    <section className={styles.container}>
       <button
+        className={styles.startButton}
         type='button'
         onClick={() => {
           void handleStart();
@@ -70,13 +65,7 @@ export const GameCanvas = () => {
         height={CANVAS_HEIGHT}
         // CSS는 페이지에서 Canvas DOM 요소가 보이는 크기를 조절한다.
         // 내부 크기와 같은 너비로 표시하되 작은 화면에서는 비율을 유지하며 줄인다.
-        style={{
-          display: "block",
-          width: `${CANVAS_WIDTH}px`,
-          maxWidth: "100%",
-          height: "auto",
-          border: "1px solid #374151",
-        }}
+        className={styles.canvas}
         aria-label='D, F, J, K 네 개의 레인이 있는 리듬게임 화면'
       >
         Canvas를 지원하는 브라우저가 필요합니다.

@@ -1,0 +1,81 @@
+.statusMessage,
+.statusPanel,
+.gamePage {
+  min-height: 100svh;
+  padding: 32px;
+}
+
+.statusMessage,
+.statusPanel {
+  display: grid;
+  place-content: center;
+  gap: 12px;
+  margin: 0;
+  text-align: center;
+}
+
+.statusTitle {
+  margin: 0;
+  color: var(--text-h);
+  font-size: 36px;
+}
+
+.gamePage {
+  padding-top: 20px;
+}
+
+.gameHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+}
+
+.productName {
+  margin: 0;
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.signedInUser {
+  margin: 4px 0 0;
+}
+
+.actionButton {
+  padding: 9px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-h);
+  background: var(--bg);
+  cursor: pointer;
+}
+
+.actionButton:hover:not(:disabled) {
+  border-color: var(--accent-border);
+  color: var(--accent);
+}
+
+.actionButton:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.error {
+  margin: 16px 0 0;
+  color: #dc2626;
+}
+
+@media (max-width: 600px) {
+  .statusMessage,
+  .statusPanel,
+  .gamePage {
+    padding: 20px;
+  }
+
+  .statusTitle {
+    font-size: 28px;
+  }
+}
