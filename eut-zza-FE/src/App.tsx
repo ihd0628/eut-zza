@@ -1,12 +1,18 @@
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getCurrentUser, logout } from "./api/auth-api";
 import { AuthPanel } from "./components/AuthPanel";
 import { GameCanvas } from "./components/GameCanvas";
+import {
+  ModeSelection,
+  type PlayMode,
+} from "./components/ModeSelection";
 import { currentUserQueryKey } from "./query/query-keys";
 import styles from "./App.module.css";
 
 function App() {
   const queryClient = useQueryClient();
+  const [selectedMode, setSelectedMode] = useState<PlayMode | null>(null);
   const currentUserQuery = useQuery({
     queryKey: currentUserQueryKey,
     queryFn: getCurrentUser,
@@ -16,6 +22,7 @@ function App() {
   const logoutMutation = useMutation({
     mutationFn: logout,
     onSuccess: () => {
+      setSelectedMode(null);
       queryClient.setQueryData(currentUserQueryKey, null);
     },
   });
@@ -73,7 +80,42 @@ function App() {
         </p>
       ) : null}
 
-      <GameCanvas />
+      {selectedMode === null ? (
+        <ModeSelection onSelect={setSelectedMode} />
+      ) : (
+        <>
+          <nav className={styles.modeNavigation} aria-label="플레이 모드 이동">
+            <button
+              className={styles.actionButton}
+              type="button"
+              onClick={() => setSelectedMode(null)}
+            >
+              ← 모드 선택으로
+            </button>
+          </nav>
+
+          {selectedMode === "solo" ? (
+            <GameCanvas />
+          ) : (
+            <section
+              className={styles.comingSoonPanel}
+              aria-labelledby="multiplayer-coming-soon"
+            >
+              <p className={styles.comingSoonEyebrow}>MULTIPLAYER</p>
+              <h1
+                id="multiplayer-coming-soon"
+                className={styles.comingSoonTitle}
+              >
+                멀티플레이를 준비하고 있습니다.
+              </h1>
+              <p className={styles.comingSoonDescription}>
+                Week 6에서 방 목록, 최대 4명 입장, 방장 설정과 실시간 대전을
+                연결합니다.
+              </p>
+            </section>
+          )}
+        </>
+      )}
     </main>
   );
 }

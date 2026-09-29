@@ -1,0 +1,106 @@
+.container {
+  display: grid;
+  gap: 32px;
+  width: min(880px, 100%);
+  margin: 0 auto;
+  padding: 72px 0;
+}
+
+.headingGroup {
+  display: grid;
+  gap: 10px;
+  text-align: center;
+}
+
+.eyebrow {
+  margin: 0;
+  color: var(--accent);
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+}
+
+.title {
+  margin: 0;
+  color: var(--text-h);
+  font-size: clamp(30px, 5vw, 48px);
+  line-height: 1.15;
+}
+
+.description {
+  max-width: 620px;
+  margin: 0 auto;
+}
+
+.modeGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.modeCard {
+  display: grid;
+  gap: 14px;
+  min-height: 260px;
+  padding: 28px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  color: var(--text);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color 160ms ease,
+    transform 160ms ease;
+}
+
+.modeCard:hover {
+  border-color: var(--accent-border);
+  transform: translateY(-3px);
+}
+
+.modeCard:focus-visible {
+  outline: 3px solid var(--accent-border);
+  outline-offset: 3px;
+}
+
+.modeBadge {
+  width: fit-content;
+  padding: 5px 9px;
+  border: 1px solid var(--accent-border);
+  border-radius: 999px;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.modeTitle {
+  color: var(--text-h);
+  font-size: 28px;
+}
+
+.modeDescription {
+  align-self: start;
+}
+
+.modeAction {
+  align-self: end;
+  color: var(--accent);
+  font-weight: 700;
+}
+
+@media (max-width: 700px) {
+  .container {
+    padding: 44px 0;
+  }
+
+  .modeGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .modeCard {
+    min-height: 220px;
+  }
+}
