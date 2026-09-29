@@ -7,12 +7,18 @@ import {
   ModeSelection,
   type PlayMode,
 } from "./components/ModeSelection";
+import {
+  SoloSetup,
+  type SoloGameSelection,
+} from "./components/SoloSetup";
 import { currentUserQueryKey } from "./query/query-keys";
 import styles from "./App.module.css";
 
 function App() {
   const queryClient = useQueryClient();
   const [selectedMode, setSelectedMode] = useState<PlayMode | null>(null);
+  const [soloGameSelection, setSoloGameSelection] =
+    useState<SoloGameSelection | null>(null);
   const currentUserQuery = useQuery({
     queryKey: currentUserQueryKey,
     queryFn: getCurrentUser,
@@ -23,6 +29,7 @@ function App() {
     mutationFn: logout,
     onSuccess: () => {
       setSelectedMode(null);
+      setSoloGameSelection(null);
       queryClient.setQueryData(currentUserQueryKey, null);
     },
   });
@@ -81,21 +88,51 @@ function App() {
       ) : null}
 
       {selectedMode === null ? (
-        <ModeSelection onSelect={setSelectedMode} />
+        <ModeSelection
+          onSelect={(mode) => {
+            setSelectedMode(mode);
+            setSoloGameSelection(null);
+          }}
+        />
       ) : (
         <>
           <nav className={styles.modeNavigation} aria-label="플레이 모드 이동">
             <button
               className={styles.actionButton}
               type="button"
-              onClick={() => setSelectedMode(null)}
+              onClick={() => {
+                setSelectedMode(null);
+                setSoloGameSelection(null);
+              }}
             >
               ← 모드 선택으로
             </button>
+            {selectedMode === "solo" && soloGameSelection !== null ? (
+              <button
+                className={styles.actionButton}
+                type="button"
+                onClick={() => setSoloGameSelection(null)}
+              >
+                곡 선택으로
+              </button>
+            ) : null}
           </nav>
 
           {selectedMode === "solo" ? (
-            <GameCanvas />
+            soloGameSelection === null ? (
+              <SoloSetup onStart={setSoloGameSelection} />
+            ) : (
+              <>
+                <div className={styles.gameSelectionSummary}>
+                  <strong>{soloGameSelection.song.title}</strong>
+                  <span>
+                    {soloGameSelection.beatmap.difficulty.toUpperCase()} · 레벨{" "}
+                    {soloGameSelection.beatmap.level}
+                  </span>
+                </div>
+                <GameCanvas audioUrl={soloGameSelection.song.audioUrl} />
+              </>
+            )
           ) : (
             <section
               className={styles.comingSoonPanel}

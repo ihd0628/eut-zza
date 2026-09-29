@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { AUDIO_URL, SAMPLE_NOTES } from "../constants";
+import { SAMPLE_NOTES } from "../constants";
 import { GameEngine } from "../game/GameEngine";
 import styles from "./GameCanvas.module.css";
 
@@ -14,7 +14,11 @@ const CANVAS_HEIGHT = 720;
  * 이 컴포넌트는 "어떻게 그릴지"를 알지 않는다.
  * Canvas DOM의 생성과 생명주기만 관리하고, 그리기 책임은 CanvasRenderer에 위임한다.
  */
-export const GameCanvas = () => {
+type GameCanvasProps = {
+  audioUrl: string;
+};
+
+export const GameCanvas = ({ audioUrl }: GameCanvasProps) => {
   // 첫 React render 시점에는 아직 <canvas> DOM이 생성되기 전이므로 초기값은 null이다.
   // React commit이 끝나면 React가 canvasRef.current에 실제 HTMLCanvasElement를 넣어준다.
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -30,7 +34,9 @@ export const GameCanvas = () => {
 
     // 이 함수는 버튼 클릭으로 실행되므로
     // AudioContext.resume()도 사용자 동작 안에서 호출된다.
-    const gameEngine = new GameEngine(canvas, SAMPLE_NOTES, AUDIO_URL);
+    // 음원은 사용자가 선택한 서버 데이터에서 가져온다.
+    // 노트 데이터는 서버 채보 API를 만들기 전까지 기존 SAMPLE_NOTES를 사용한다.
+    const gameEngine = new GameEngine(canvas, SAMPLE_NOTES, audioUrl);
 
     gameEngineRef.current = gameEngine;
 

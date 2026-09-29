@@ -69,7 +69,21 @@
 }
 
 .modeNavigation {
+  display: flex;
+  gap: 10px;
   padding-top: 20px;
+}
+
+.gameSelectionSummary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding-top: 18px;
+}
+
+.gameSelectionSummary strong {
+  color: var(--text-h);
 }
 
 .comingSoonPanel {

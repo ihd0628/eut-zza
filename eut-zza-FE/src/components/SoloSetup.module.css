@@ -1,0 +1,170 @@
+.container {
+  display: grid;
+  gap: 30px;
+  width: min(900px, 100%);
+  margin: 0 auto;
+  padding: 44px 0 72px;
+}
+
+.header {
+  display: grid;
+  gap: 8px;
+}
+
+.eyebrow,
+.songLabel {
+  margin: 0;
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+}
+
+.title,
+.sectionTitle {
+  margin: 0;
+  color: var(--text-h);
+}
+
+.title {
+  font-size: clamp(30px, 5vw, 44px);
+  line-height: 1.2;
+}
+
+.selectionSection {
+  display: grid;
+  gap: 14px;
+}
+
+.sectionTitle {
+  font-size: 20px;
+}
+
+.songGrid,
+.difficultyGrid {
+  display: grid;
+  gap: 14px;
+}
+
+.songGrid {
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+.songCard,
+.difficultyButton,
+.retryButton,
+.startButton {
+  border: 1px solid var(--border);
+  color: var(--text);
+  background: var(--surface);
+  cursor: pointer;
+}
+
+.songCard {
+  display: grid;
+  gap: 10px;
+  min-height: 150px;
+  padding: 22px;
+  border-radius: 14px;
+  text-align: left;
+}
+
+.songTitle {
+  color: var(--text-h);
+  font-size: 22px;
+}
+
+.difficultyGrid {
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+}
+
+.difficultyButton {
+  display: grid;
+  gap: 4px;
+  padding: 16px;
+  border-radius: 10px;
+  text-align: left;
+}
+
+.songCard:hover,
+.difficultyButton:hover,
+.retryButton:hover,
+.startButton:hover:not(:disabled),
+.selected {
+  border-color: var(--accent-border);
+}
+
+.selected {
+  box-shadow: 0 0 0 2px var(--accent-border);
+}
+
+.songCard:focus-visible,
+.difficultyButton:focus-visible,
+.retryButton:focus-visible,
+.startButton:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.guide,
+.status,
+.error {
+  margin: 0;
+}
+
+.guide {
+  padding: 22px;
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  text-align: center;
+}
+
+.status,
+.statusPanel {
+  min-height: 360px;
+  padding: 48px 24px;
+}
+
+.status {
+  display: grid;
+  place-content: center;
+  text-align: center;
+}
+
+.statusPanel {
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 14px;
+}
+
+.error {
+  color: #dc2626;
+}
+
+.retryButton,
+.startButton {
+  padding: 11px 18px;
+  border-radius: 9px;
+}
+
+.startButton {
+  justify-self: end;
+  color: var(--text-h);
+  font-weight: 700;
+}
+
+.startButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+@media (max-width: 600px) {
+  .container {
+    padding: 32px 0 48px;
+  }
+
+  .startButton {
+    width: 100%;
+  }
+}
