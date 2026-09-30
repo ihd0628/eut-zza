@@ -4,6 +4,7 @@ export type PlayMode = "solo" | "multiplayer";
 
 type ModeSelectionProps = {
   onSelect: (mode: PlayMode) => void;
+  onShowRecords: () => void;
 };
 
 /**
@@ -12,7 +13,10 @@ type ModeSelectionProps = {
  * 여기서 선택한 값은 현재 어떤 화면을 보여줄지 결정하는 UI 상태다.
  * 실제 경기의 mode는 이후 서버가 game_sessions를 만들 때 별도로 저장한다.
  */
-export const ModeSelection = ({ onSelect }: ModeSelectionProps) => {
+export const ModeSelection = ({
+  onSelect,
+  onShowRecords,
+}: ModeSelectionProps) => {
   return (
     <section className={styles.container} aria-labelledby="mode-selection-title">
       <div className={styles.headingGroup}>
@@ -53,6 +57,14 @@ export const ModeSelection = ({ onSelect }: ModeSelectionProps) => {
           <span className={styles.modeAction}>준비 상태 보기 →</span>
         </button>
       </div>
+
+      <button
+        className={styles.recordsButton}
+        type="button"
+        onClick={onShowRecords}
+      >
+        내 게임 기록 보기 →
+      </button>
     </section>
   );
 };

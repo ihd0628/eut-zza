@@ -1,11 +1,15 @@
 import { useRef, useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   completeSoloGame,
   startSoloGame,
   type StartedSoloGame,
 } from "../api/game-session-api";
 import type { GameResult } from "../game/types";
+import {
+  myBestScoresQueryKey,
+  myScoresQueryKey,
+} from "../query/query-keys";
 import type { SoloGameSelection } from "./SoloSetup";
 import { GameCanvas } from "./GameCanvas";
 import { SoloResult } from "./SoloResult";
@@ -31,6 +35,7 @@ const getErrorMessage = (error: unknown): string => {
  * 성공한 결과를 ref에도 보관한다.
  */
 export const SoloGame = ({ selection }: SoloGameProps) => {
+  const queryClient = useQueryClient();
   const startedGameRef = useRef<StartedSoloGame | null>(null);
   const [gameResult, setGameResult] = useState<GameResult | null>(null);
   const startGameMutation = useMutation({
@@ -48,6 +53,14 @@ export const SoloGame = ({ selection }: SoloGameProps) => {
         gamePlayerId: startedGame.gamePlayer.id,
         ...result,
       });
+    },
+    onSuccess: async () => {
+      // 이전에 기록 화면을 조회했다면 캐시에는 게임 전 데이터가 남아 있다.
+      // 두 Query를 stale 상태로 만들고, 다음 기록 화면 진입 때 최신 값을 받는다.
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: myScoresQueryKey }),
+        queryClient.invalidateQueries({ queryKey: myBestScoresQueryKey }),
+      ]);
     },
   });
 

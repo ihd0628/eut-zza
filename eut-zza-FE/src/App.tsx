@@ -6,17 +6,22 @@ import {
   ModeSelection,
   type PlayMode,
 } from "./components/ModeSelection";
+import { MyRecords } from "./components/MyRecords";
 import { SoloGame } from "./components/SoloGame";
 import {
   SoloSetup,
   type SoloGameSelection,
 } from "./components/SoloSetup";
-import { currentUserQueryKey } from "./query/query-keys";
+import {
+  currentUserQueryKey,
+  myRecordsQueryKey,
+} from "./query/query-keys";
 import styles from "./App.module.css";
 
 function App() {
   const queryClient = useQueryClient();
   const [selectedMode, setSelectedMode] = useState<PlayMode | null>(null);
+  const [isViewingRecords, setIsViewingRecords] = useState(false);
   const [soloGameSelection, setSoloGameSelection] =
     useState<SoloGameSelection | null>(null);
   const currentUserQuery = useQuery({
@@ -30,6 +35,10 @@ function App() {
     onSuccess: () => {
       setSelectedMode(null);
       setSoloGameSelection(null);
+      setIsViewingRecords(false);
+      // `users/me` 캐시는 로그인 사용자에게 종속된다.
+      // 다음 계정에 이전 사용자의 기록이 잠깐 보이지 않도록 로그아웃 때 제거한다.
+      queryClient.removeQueries({ queryKey: myRecordsQueryKey });
       queryClient.setQueryData(currentUserQueryKey, null);
     },
   });
@@ -87,12 +96,26 @@ function App() {
         </p>
       ) : null}
 
-      {selectedMode === null ? (
+      {isViewingRecords ? (
+        <>
+          <nav className={styles.modeNavigation} aria-label="기록 화면 이동">
+            <button
+              className={styles.actionButton}
+              type="button"
+              onClick={() => setIsViewingRecords(false)}
+            >
+              ← 모드 선택으로
+            </button>
+          </nav>
+          <MyRecords />
+        </>
+      ) : selectedMode === null ? (
         <ModeSelection
           onSelect={(mode) => {
             setSelectedMode(mode);
             setSoloGameSelection(null);
           }}
+          onShowRecords={() => setIsViewingRecords(true)}
         />
       ) : (
         <>

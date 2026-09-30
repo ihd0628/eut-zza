@@ -91,6 +91,26 @@
   font-weight: 700;
 }
 
+.recordsButton {
+  justify-self: center;
+  padding: 10px 16px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  color: var(--text-h);
+  background: var(--bg);
+  cursor: pointer;
+}
+
+.recordsButton:hover {
+  border-color: var(--accent-border);
+  color: var(--accent);
+}
+
+.recordsButton:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 @media (max-width: 700px) {
   .container {
     padding: 44px 0;
