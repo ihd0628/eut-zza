@@ -75,12 +75,17 @@ export class GameEngine {
     this.notesByLane = notesByLane;
   }
 
-  async start(): Promise<void> {
-    // 먼저 AudioContext를 running 상태로 만들고
-    // 게임 시간 0의 기준을 저장한다.
-    await this.audioManager.start(this.audioUrl);
+  async prepare(): Promise<void> {
+    // 사용자 클릭 흐름에서 AudioContext를 활성화하고 음원을 미리 준비한다.
+    // 아직 음악, 입력, GameLoop는 시작하지 않는다.
+    await this.audioManager.prepare(this.audioUrl);
+  }
 
-    // 오디오 clock이 준비된 뒤 입력과 화면 갱신을 시작한다.
+  start(): void {
+    // 서버의 경기 생성과 음원 준비가 모두 끝난 뒤 실제 음악을 시작한다.
+    this.audioManager.play();
+
+    // 음악과 같은 시점부터 입력과 화면 갱신을 시작한다.
     this.inputManager.attach();
     this.gameLoop.start();
   }

@@ -2,11 +2,11 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getCurrentUser, logout } from "./api/auth-api";
 import { AuthPanel } from "./components/AuthPanel";
-import { GameCanvas } from "./components/GameCanvas";
 import {
   ModeSelection,
   type PlayMode,
 } from "./components/ModeSelection";
+import { SoloGame } from "./components/SoloGame";
 import {
   SoloSetup,
   type SoloGameSelection,
@@ -122,16 +122,7 @@ function App() {
             soloGameSelection === null ? (
               <SoloSetup onStart={setSoloGameSelection} />
             ) : (
-              <>
-                <div className={styles.gameSelectionSummary}>
-                  <strong>{soloGameSelection.song.title}</strong>
-                  <span>
-                    {soloGameSelection.beatmap.difficulty.toUpperCase()} · 레벨{" "}
-                    {soloGameSelection.beatmap.level}
-                  </span>
-                </div>
-                <GameCanvas audioUrl={soloGameSelection.song.audioUrl} />
-              </>
+              <SoloGame selection={soloGameSelection} />
             )
           ) : (
             <section

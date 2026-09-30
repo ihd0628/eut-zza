@@ -17,15 +17,21 @@ export class AudioManager {
     this.audioContext = new AudioContext();
   }
 
-  async start(audioUrl: string): Promise<void> {
+  async prepare(audioUrl: string): Promise<void> {
     // 사용자 클릭 흐름 안에서 가장 먼저 resume()을 요청한다.
     await this.audioContext.resume();
 
-    // 실제 음원을 내려받고 디코딩한다.
+    // 재생은 아직 시작하지 않고 실제 음원만 내려받아 디코딩한다.
     await this.load(audioUrl);
+  }
 
+  play(): void {
     if (this.audioBuffer === null) {
       throw new Error("재생할 AudioBuffer가 없습니다.");
+    }
+
+    if (this.startedAtSeconds !== null) {
+      throw new Error("음악이 이미 재생 중입니다.");
     }
 
     // AudioBufferSourceNode는 AudioBuffer를 실제로 재생하는 노드다.

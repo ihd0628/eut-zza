@@ -1,0 +1,29 @@
+.container {
+  display: grid;
+}
+
+.selectionSummary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding-top: 18px;
+}
+
+.selectionSummary strong {
+  color: var(--text-h);
+}
+
+.sessionStatus {
+  margin: 10px 0 0;
+  color: var(--accent);
+  font-size: 14px;
+  text-align: center;
+}
+
+@media (max-width: 600px) {
+  .selectionSummary {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

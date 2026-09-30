@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { SAMPLE_NOTES } from "../constants";
 import { GameEngine } from "../game/GameEngine";
 import styles from "./GameCanvas.module.css";
@@ -16,38 +16,93 @@ const CANVAS_HEIGHT = 720;
  */
 type GameCanvasProps = {
   audioUrl: string;
+  onCreateGame: () => Promise<void>;
 };
 
-export const GameCanvas = ({ audioUrl }: GameCanvasProps) => {
+type StartStatus = "idle" | "starting" | "running";
+
+const getErrorMessage = (error: unknown): string => {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  return "게임을 시작하지 못했습니다.";
+};
+
+export const GameCanvas = ({
+  audioUrl,
+  onCreateGame,
+}: GameCanvasProps) => {
   // 첫 React render 시점에는 아직 <canvas> DOM이 생성되기 전이므로 초기값은 null이다.
   // React commit이 끝나면 React가 canvasRef.current에 실제 HTMLCanvasElement를 넣어준다.
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const gameEngineRef = useRef<GameEngine | null>(null);
+  const startInProgressRef = useRef(false);
+  const mountedRef = useRef(false);
+  const [startStatus, setStartStatus] = useState<StartStatus>("idle");
+  const [startError, setStartError] = useState<string | null>(null);
 
   const handleStart = async (): Promise<void> => {
     const canvas = canvasRef.current;
 
     // Canvas가 없거나 게임이 이미 시작됐다면 중복 실행하지 않는다.
-    if (canvas === null || gameEngineRef.current !== null) {
+    if (
+      canvas === null ||
+      gameEngineRef.current !== null ||
+      startInProgressRef.current
+    ) {
       return;
     }
 
-    // 이 함수는 버튼 클릭으로 실행되므로
-    // AudioContext.resume()도 사용자 동작 안에서 호출된다.
+    startInProgressRef.current = true;
+    setStartStatus("starting");
+    setStartError(null);
+
     // 음원은 사용자가 선택한 서버 데이터에서 가져온다.
     // 노트 데이터는 서버 채보 API를 만들기 전까지 기존 SAMPLE_NOTES를 사용한다.
     const gameEngine = new GameEngine(canvas, SAMPLE_NOTES, audioUrl);
 
     gameEngineRef.current = gameEngine;
 
-    await gameEngine.start();
+    try {
+      // prepare()는 이 클릭 handler 안에서 즉시 AudioContext.resume()을 요청한다.
+      // 서버 경기 생성과 음원 다운로드·디코딩은 서로 독립적이므로 함께 기다린다.
+      await Promise.all([gameEngine.prepare(), onCreateGame()]);
+
+      // 준비 도중 다른 화면으로 이동했다면 음악과 GameLoop를 시작하지 않는다.
+      if (!mountedRef.current || gameEngineRef.current !== gameEngine) {
+        await gameEngine.dispose();
+        return;
+      }
+
+      gameEngine.start();
+      setStartStatus("running");
+    } catch (error: unknown) {
+      if (gameEngineRef.current === gameEngine) {
+        gameEngineRef.current = null;
+      }
+
+      await gameEngine.dispose();
+      startInProgressRef.current = false;
+
+      if (mountedRef.current) {
+        setStartStatus("idle");
+        setStartError(getErrorMessage(error));
+      }
+    }
   };
 
   useEffect(() => {
+    mountedRef.current = true;
+
     return () => {
+      mountedRef.current = false;
+      startInProgressRef.current = false;
+
       const gameEngine = gameEngineRef.current;
 
       if (gameEngine !== null) {
+        gameEngineRef.current = null;
         void gameEngine.dispose();
       }
     };
@@ -57,13 +112,23 @@ export const GameCanvas = ({ audioUrl }: GameCanvasProps) => {
     <section className={styles.container}>
       <button
         className={styles.startButton}
-        type='button'
+        type="button"
+        disabled={startStatus !== "idle"}
         onClick={() => {
           void handleStart();
         }}
       >
-        게임 시작
+        {startStatus === "starting"
+          ? "게임 준비 중..."
+          : startStatus === "running"
+            ? "게임 진행 중"
+            : "게임 시작"}
       </button>
+      {startError === null ? null : (
+        <p className={styles.error} role="alert">
+          {startError}
+        </p>
+      )}
       <canvas
         ref={canvasRef}
         // HTML 속성인 width와 height가 Canvas 내부 픽셀 좌표계의 크기를 결정한다.
@@ -72,7 +137,7 @@ export const GameCanvas = ({ audioUrl }: GameCanvasProps) => {
         // CSS는 페이지에서 Canvas DOM 요소가 보이는 크기를 조절한다.
         // 내부 크기와 같은 너비로 표시하되 작은 화면에서는 비율을 유지하며 줄인다.
         className={styles.canvas}
-        aria-label='D, F, J, K 네 개의 레인이 있는 리듬게임 화면'
+        aria-label="D, F, J, K 네 개의 레인이 있는 리듬게임 화면"
       >
         Canvas를 지원하는 브라우저가 필요합니다.
       </canvas>
