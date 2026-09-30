@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { SAMPLE_NOTES } from "../constants";
 import { GameEngine } from "../game/GameEngine";
+import type { GameResult } from "../game/types";
 import styles from "./GameCanvas.module.css";
 
 // 이 숫자들은 Canvas 내부 그림판(backing store)의 크기다.
@@ -17,9 +18,10 @@ const CANVAS_HEIGHT = 720;
 type GameCanvasProps = {
   audioUrl: string;
   onCreateGame: () => Promise<void>;
+  onComplete: (result: GameResult) => void;
 };
 
-type StartStatus = "idle" | "starting" | "running";
+type StartStatus = "idle" | "starting" | "running" | "completed";
 
 const getErrorMessage = (error: unknown): string => {
   if (error instanceof Error) {
@@ -32,6 +34,7 @@ const getErrorMessage = (error: unknown): string => {
 export const GameCanvas = ({
   audioUrl,
   onCreateGame,
+  onComplete,
 }: GameCanvasProps) => {
   // 첫 React render 시점에는 아직 <canvas> DOM이 생성되기 전이므로 초기값은 null이다.
   // React commit이 끝나면 React가 canvasRef.current에 실제 HTMLCanvasElement를 넣어준다.
@@ -60,7 +63,19 @@ export const GameCanvas = ({
 
     // 음원은 사용자가 선택한 서버 데이터에서 가져온다.
     // 노트 데이터는 서버 채보 API를 만들기 전까지 기존 SAMPLE_NOTES를 사용한다.
-    const gameEngine = new GameEngine(canvas, SAMPLE_NOTES, audioUrl);
+    const gameEngine = new GameEngine(
+      canvas,
+      SAMPLE_NOTES,
+      audioUrl,
+      (result) => {
+        if (!mountedRef.current) {
+          return;
+        }
+
+        setStartStatus("completed");
+        onComplete(result);
+      },
+    );
 
     gameEngineRef.current = gameEngine;
 
@@ -122,6 +137,8 @@ export const GameCanvas = ({
           ? "게임 준비 중..."
           : startStatus === "running"
             ? "게임 진행 중"
+            : startStatus === "completed"
+              ? "게임 완료"
             : "게임 시작"}
       </button>
       {startError === null ? null : (

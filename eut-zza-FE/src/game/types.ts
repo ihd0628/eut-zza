@@ -35,3 +35,18 @@ export interface Note {
 }
 
 export type Judgment = "PERFECT" | "GREAT" | "GOOD" | "MISS";
+
+/**
+ * 한 판이 끝났을 때 React에 전달하는 최종 결과다.
+ * 백엔드의 점수 저장 API가 요구하는 판정 통계와 같은 형태로 유지한다.
+ */
+export interface GameResult {
+  score: number;
+  perfectCount: number;
+  greatCount: number;
+  goodCount: number;
+  missCount: number;
+  maxCombo: number;
+}
+
+export type GameCompleteCallback = (result: GameResult) => void;

@@ -1,11 +1,13 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import {
   startSoloGame,
   type StartedSoloGame,
 } from "../api/game-session-api";
+import type { GameResult } from "../game/types";
 import type { SoloGameSelection } from "./SoloSetup";
 import { GameCanvas } from "./GameCanvas";
+import { SoloResult } from "./SoloResult";
 import styles from "./SoloGame.module.css";
 
 type SoloGameProps = {
@@ -21,6 +23,7 @@ type SoloGameProps = {
  */
 export const SoloGame = ({ selection }: SoloGameProps) => {
   const startedGameRef = useRef<StartedSoloGame | null>(null);
+  const [gameResult, setGameResult] = useState<GameResult | null>(null);
   const startGameMutation = useMutation({
     mutationFn: () => startSoloGame(selection.beatmap.id),
   });
@@ -52,10 +55,15 @@ export const SoloGame = ({ selection }: SoloGameProps) => {
         </p>
       )}
 
-      <GameCanvas
-        audioUrl={selection.song.audioUrl}
-        onCreateGame={ensureGameSession}
-      />
+      {gameResult === null ? (
+        <GameCanvas
+          audioUrl={selection.song.audioUrl}
+          onCreateGame={ensureGameSession}
+          onComplete={setGameResult}
+        />
+      ) : (
+        <SoloResult result={gameResult} />
+      )}
     </section>
   );
 };

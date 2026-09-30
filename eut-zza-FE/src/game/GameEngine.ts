@@ -23,13 +23,28 @@ import {
   findClosestHittableNote,
   isNoteMissed,
 } from "./Judgment";
-import type { GameInputEvent, GameKey, LaneIndex, Note } from "./types";
+import type {
+  GameCompleteCallback,
+  GameInputEvent,
+  GameKey,
+  GameResult,
+  Judgment,
+  LaneIndex,
+  Note,
+} from "./types";
 
 const KEY_TO_LANE_INDEX: Record<GameKey, LaneIndex> = {
   D: 0,
   F: 1,
   J: 2,
   K: 3,
+};
+
+const JUDGMENT_SCORE: Record<Judgment, number> = {
+  PERFECT: 1_000,
+  GREAT: 700,
+  GOOD: 300,
+  MISS: 0,
 };
 
 export class GameEngine {
@@ -39,18 +54,33 @@ export class GameEngine {
   private readonly notes: Note[];
   private readonly audioManager: AudioManager;
   private readonly audioUrl: string;
+  private readonly onComplete: GameCompleteCallback;
   private readonly judgedNoteIds = new Set<string>();
   private readonly notesByLane: Record<LaneIndex, readonly Note[]>;
   private readonly noteRenderLookaheadMs: number;
   private readonly renderNotes: Note[] = [];
   private nextMissNoteIndex = 0;
   private renderEndNoteIndex = 0;
+  private score = 0;
+  private combo = 0;
+  private maxCombo = 0;
+  private perfectCount = 0;
+  private greatCount = 0;
+  private goodCount = 0;
+  private missCount = 0;
+  private isCompleted = false;
 
-  constructor(canvas: HTMLCanvasElement, notes: Note[], audioUrl: string) {
+  constructor(
+    canvas: HTMLCanvasElement,
+    notes: Note[],
+    audioUrl: string,
+    onComplete: GameCompleteCallback,
+  ) {
     this.audioManager = new AudioManager();
     this.renderer = new CanvasRenderer(canvas);
     this.noteRenderLookaheadMs = this.renderer.getNoteRenderLookaheadMs();
     this.audioUrl = audioUrl;
+    this.onComplete = onComplete;
 
     this.gameLoop = new GameLoop(this.handleFrame);
     this.inputManager = new InputManager(this.handleInput);
@@ -88,6 +118,9 @@ export class GameEngine {
     // 음악과 같은 시점부터 입력과 화면 갱신을 시작한다.
     this.inputManager.attach();
     this.gameLoop.start();
+
+    // 노트가 하나도 없는 채보도 시작 직후 정상적으로 완료 처리한다.
+    this.completeGameIfAllNotesAreJudged();
   }
   stop() {
     // 화면 갱신과 입력 중단
@@ -120,6 +153,7 @@ export class GameEngine {
       // MISS 판정이 가능하면 기록하고 로그를 남긴다.
       this.judgedNoteIds.add(note.id);
       this.nextMissNoteIndex += 1;
+      this.recordJudgment("MISS");
 
       console.log("[Judgment] MISS", {
         noteId: note.id,
@@ -127,6 +161,55 @@ export class GameEngine {
         hitTimeMs: note.hitTimeMs,
       });
     }
+
+    this.completeGameIfAllNotesAreJudged();
+  }
+
+  private recordJudgment(judgment: Judgment): void {
+    this.score += JUDGMENT_SCORE[judgment];
+
+    if (judgment === "MISS") {
+      this.missCount += 1;
+      this.combo = 0;
+      return;
+    }
+
+    this.combo += 1;
+    this.maxCombo = Math.max(this.maxCombo, this.combo);
+
+    if (judgment === "PERFECT") {
+      this.perfectCount += 1;
+      return;
+    }
+
+    if (judgment === "GREAT") {
+      this.greatCount += 1;
+      return;
+    }
+
+    this.goodCount += 1;
+  }
+
+  private completeGameIfAllNotesAreJudged(): void {
+    if (this.isCompleted || this.judgedNoteIds.size !== this.notes.length) {
+      return;
+    }
+
+    // 완료 상태를 먼저 기록하고 루프와 입력을 중단해야 콜백으로 React가
+    // 다시 렌더링되는 동안 중복 완료나 추가 입력이 발생하지 않는다.
+    this.isCompleted = true;
+    this.stop();
+
+    const result: GameResult = {
+      score: this.score,
+      perfectCount: this.perfectCount,
+      greatCount: this.greatCount,
+      goodCount: this.goodCount,
+      missCount: this.missCount,
+      maxCombo: this.maxCombo,
+    };
+
+    this.onComplete(result);
   }
 
   private collectRenderNotes(currentTimeMs: number): readonly Note[] {
@@ -172,6 +255,10 @@ export class GameEngine {
 
     this.updateMissedNotes(currentTimeMs);
 
+    if (this.isCompleted) {
+      return;
+    }
+
     const visibleNotes = this.collectRenderNotes(currentTimeMs);
 
     this.renderer.render(visibleNotes, currentTimeMs);
@@ -210,6 +297,7 @@ export class GameEngine {
 
     // 같은 노트를 다시 판정하지 못하도록 기록한다.
     this.judgedNoteIds.add(closestNote.id);
+    this.recordJudgment(judgment);
 
     console.log("[Judgment]", {
       noteId: closestNote.id,
@@ -217,5 +305,7 @@ export class GameEngine {
       judgment,
       timingOffsetMs,
     });
+
+    this.completeGameIfAllNotesAreJudged();
   };
 }
