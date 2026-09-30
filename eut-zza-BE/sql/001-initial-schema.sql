@@ -31,6 +31,8 @@ CREATE TABLE beatmaps (
 CREATE TABLE game_sessions (
   id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   beatmap_id BIGINT NOT NULL REFERENCES beatmaps(id),
+  mode TEXT NOT NULL
+    CHECK (mode IN ('solo', 'multiplayer')),
   status TEXT NOT NULL DEFAULT 'waiting'
     CHECK (status IN ('waiting', 'playing', 'completed', 'cancelled')),
   created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,

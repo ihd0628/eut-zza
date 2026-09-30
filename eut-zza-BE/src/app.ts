@@ -2,6 +2,7 @@ import cors from "@fastify/cors";
 import cookie from "@fastify/cookie";
 import Fastify, { type FastifyInstance } from "fastify";
 import { authRoutes } from "./routes/auth-routes.js";
+import { gameSessionRoutes } from "./routes/game-session-routes.js";
 import { healthRoutes } from "./routes/health-routes.js";
 import { scoreRoutes } from "./routes/score-routes.js";
 import { songRoutes } from "./routes/song-routes.js";
@@ -35,6 +36,7 @@ export const buildApp = async (): Promise<FastifyInstance> => {
   await app.register(healthRoutes);
   await app.register(authRoutes);
   await app.register(songRoutes);
+  await app.register(gameSessionRoutes);
   await app.register(scoreRoutes);
   await app.register(userRoutes);
 
