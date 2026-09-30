@@ -1,6 +1,14 @@
 import { DatabaseError } from "pg";
 import { pool } from "../db.js";
 import {
+  SoloGameCompletionForbiddenError,
+  SoloGameNotFoundError,
+  SoloGameNotPlayingError,
+  type CompleteSoloGameInput,
+  type CompletedSoloGame,
+  type GameSession,
+} from "../domain/game-session.js";
+import {
   GamePlayerNotFoundError,
   ScoreAlreadyExistsError,
   type CreateScoreInput,
@@ -10,6 +18,11 @@ import {
 } from "../domain/score.js";
 
 type GamePlayerOwnerRow = {
+  userId: string;
+};
+
+type SoloGameCompletionContext = GameSession & {
+  gamePlayerId: string;
   userId: string;
 };
 
@@ -89,6 +102,145 @@ export const createScore = async (input: CreateScoreInput): Promise<Score> => {
     }
 
     throw error;
+  }
+};
+
+/**
+ * 솔로 결과 저장과 경기 완료를 하나의 DB 트랜잭션으로 처리한다.
+ * 점수 INSERT나 경기 UPDATE 중 하나라도 실패하면 두 변경을 모두 취소한다.
+ */
+export const completeSoloGameWithScore = async (
+  authenticatedUserId: string,
+  input: CompleteSoloGameInput,
+): Promise<CompletedSoloGame> => {
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    const contextResult = await client.query<SoloGameCompletionContext>(
+      `
+        SELECT
+          gs.id,
+          gs.beatmap_id AS "beatmapId",
+          gs.mode,
+          gs.status,
+          gp.id AS "gamePlayerId",
+          gp.user_id AS "userId"
+        FROM game_sessions AS gs
+        JOIN game_players AS gp
+          ON gp.game_session_id = gs.id
+        WHERE gs.id = $1
+          AND gp.id = $2
+        FOR UPDATE OF gs
+      `,
+      [input.gameSessionId, input.gamePlayerId],
+    );
+
+    const context = contextResult.rows[0];
+
+    if (context === undefined || context.mode !== "solo") {
+      throw new SoloGameNotFoundError();
+    }
+
+    if (context.userId !== authenticatedUserId) {
+      throw new SoloGameCompletionForbiddenError();
+    }
+
+    if (context.status !== "playing") {
+      throw new SoloGameNotPlayingError();
+    }
+
+    const scoreResult = await client.query<Score>(
+      `
+        INSERT INTO scores (
+          game_player_id,
+          score,
+          perfect_count,
+          great_count,
+          good_count,
+          miss_count,
+          max_combo
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        RETURNING
+          id,
+          game_player_id AS "gamePlayerId",
+          score,
+          perfect_count AS "perfectCount",
+          great_count AS "greatCount",
+          good_count AS "goodCount",
+          miss_count AS "missCount",
+          max_combo AS "maxCombo"
+      `,
+      [
+        input.gamePlayerId,
+        input.score,
+        input.perfectCount,
+        input.greatCount,
+        input.goodCount,
+        input.missCount,
+        input.maxCombo,
+      ],
+    );
+
+    const score = scoreResult.rows[0];
+
+    if (score === undefined) {
+      throw new Error("Inserted score was not returned");
+    }
+
+    const gameSessionResult = await client.query<GameSession>(
+      `
+        UPDATE game_sessions
+        SET
+          status = 'completed',
+          ended_at = CURRENT_TIMESTAMP
+        WHERE id = $1
+          AND status = 'playing'
+        RETURNING
+          id,
+          beatmap_id AS "beatmapId",
+          mode,
+          status
+      `,
+      [input.gameSessionId],
+    );
+
+    const gameSession = gameSessionResult.rows[0];
+
+    if (gameSession === undefined) {
+      throw new SoloGameNotPlayingError();
+    }
+
+    await client.query("COMMIT");
+
+    return {
+      gameSession,
+      score,
+    };
+  } catch (error: unknown) {
+    await client.query("ROLLBACK");
+
+    if (
+      error instanceof DatabaseError &&
+      error.code === "23505" &&
+      error.constraint === "scores_game_player_id_key"
+    ) {
+      throw new ScoreAlreadyExistsError();
+    }
+
+    if (
+      error instanceof DatabaseError &&
+      error.code === "23503" &&
+      error.constraint === "scores_game_player_id_fkey"
+    ) {
+      throw new GamePlayerNotFoundError();
+    }
+
+    throw error;
+  } finally {
+    client.release();
   }
 };
 

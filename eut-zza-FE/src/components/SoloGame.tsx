@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import {
+  completeSoloGame,
   startSoloGame,
   type StartedSoloGame,
 } from "../api/game-session-api";
@@ -12,6 +13,14 @@ import styles from "./SoloGame.module.css";
 
 type SoloGameProps = {
   selection: SoloGameSelection;
+};
+
+const getErrorMessage = (error: unknown): string => {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  return "게임 결과를 저장하지 못했습니다.";
 };
 
 /**
@@ -27,6 +36,20 @@ export const SoloGame = ({ selection }: SoloGameProps) => {
   const startGameMutation = useMutation({
     mutationFn: () => startSoloGame(selection.beatmap.id),
   });
+  const completeGameMutation = useMutation({
+    mutationFn: async (result: GameResult) => {
+      const startedGame = startedGameRef.current;
+
+      if (startedGame === null) {
+        throw new Error("시작된 솔로 경기 정보가 없습니다.");
+      }
+
+      return completeSoloGame(startedGame.gameSession.id, {
+        gamePlayerId: startedGame.gamePlayer.id,
+        ...result,
+      });
+    },
+  });
 
   const ensureGameSession = async (): Promise<void> => {
     if (startedGameRef.current !== null) {
@@ -36,6 +59,20 @@ export const SoloGame = ({ selection }: SoloGameProps) => {
     const startedGame = await startGameMutation.mutateAsync();
 
     startedGameRef.current = startedGame;
+  };
+
+  const handleGameComplete = (result: GameResult): void => {
+    // 서버 요청이 실패해도 같은 결과로 재시도할 수 있도록 먼저 보관한다.
+    setGameResult(result);
+    completeGameMutation.mutate(result);
+  };
+
+  const handleSaveRetry = (): void => {
+    if (gameResult === null || completeGameMutation.isPending) {
+      return;
+    }
+
+    completeGameMutation.mutate(gameResult);
   };
 
   return (
@@ -59,10 +96,25 @@ export const SoloGame = ({ selection }: SoloGameProps) => {
         <GameCanvas
           audioUrl={selection.song.audioUrl}
           onCreateGame={ensureGameSession}
-          onComplete={setGameResult}
+          onComplete={handleGameComplete}
         />
       ) : (
-        <SoloResult result={gameResult} />
+        <SoloResult
+          result={gameResult}
+          saveStatus={
+            completeGameMutation.isPending
+              ? "saving"
+              : completeGameMutation.isError
+                ? "error"
+                : "saved"
+          }
+          saveError={
+            completeGameMutation.isError
+              ? getErrorMessage(completeGameMutation.error)
+              : null
+          }
+          onRetry={handleSaveRetry}
+        />
       )}
     </section>
   );

@@ -1,4 +1,5 @@
 import { requestJson } from "./http";
+import type { GameResult } from "../game/types";
 
 export type GameMode = "solo" | "multiplayer";
 
@@ -22,6 +23,18 @@ export type StartedSoloGame = {
   };
 };
 
+export type CompletedSoloGame = {
+  gameSession: StartedSoloGame["gameSession"];
+  score: GameResult & {
+    id: string;
+    gamePlayerId: string;
+  };
+};
+
+export type CompleteSoloGameInput = GameResult & {
+  gamePlayerId: string;
+};
+
 export const startSoloGame = async (
   beatmapId: string,
 ): Promise<StartedSoloGame> => {
@@ -32,4 +45,20 @@ export const startSoloGame = async (
     },
     body: JSON.stringify({ beatmapId }),
   });
+};
+
+export const completeSoloGame = async (
+  gameSessionId: string,
+  input: CompleteSoloGameInput,
+): Promise<CompletedSoloGame> => {
+  return requestJson<CompletedSoloGame>(
+    `/game-sessions/solo/${gameSessionId}/complete`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(input),
+    },
+  );
 };
