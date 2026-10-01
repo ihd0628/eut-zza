@@ -1,5 +1,6 @@
 import cors from "@fastify/cors";
 import cookie from "@fastify/cookie";
+import websocket from "@fastify/websocket";
 import Fastify, { type FastifyInstance } from "fastify";
 import { authRoutes } from "./routes/auth-routes.js";
 import { gameSessionRoutes } from "./routes/game-session-routes.js";
@@ -7,6 +8,7 @@ import { healthRoutes } from "./routes/health-routes.js";
 import { scoreRoutes } from "./routes/score-routes.js";
 import { songRoutes } from "./routes/song-routes.js";
 import { userRoutes } from "./routes/user-routes.js";
+import { websocketLabRoutes } from "./routes/websocket-lab-routes.js";
 
 const MAX_REQUEST_BODY_BYTES = 16 * 1024;
 const FRONTEND_ORIGIN = "http://localhost:5173";
@@ -17,6 +19,9 @@ export const buildApp = async (): Promise<FastifyInstance> => {
     logger: true,
     bodyLimit: MAX_REQUEST_BODY_BYTES,
   });
+
+  // Upgrade 요청을 처리할 수 있도록 다른 Route보다 먼저 등록한다.
+  await app.register(websocket);
 
   // 현재 API는 JSON 요청만 받으므로 Fastify의 기본 text/plain 파서를 제거한다.
   app.removeContentTypeParser("text/plain");
@@ -34,6 +39,7 @@ export const buildApp = async (): Promise<FastifyInstance> => {
   app.decorateRequest("authenticatedUser", null);
 
   await app.register(healthRoutes);
+  await app.register(websocketLabRoutes);
   await app.register(authRoutes);
   await app.register(songRoutes);
   await app.register(gameSessionRoutes);
