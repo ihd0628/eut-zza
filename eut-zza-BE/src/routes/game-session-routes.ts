@@ -16,6 +16,7 @@ import {
 } from "../hooks/authentication.js";
 import {
   completeSoloGame,
+  getSoloSavedResult,
   startSoloGame,
 } from "../services/game-session-service.js";
 
@@ -87,6 +88,24 @@ const completeSoloGameBodySchema = {
 } as const;
 
 export const gameSessionRoutes: FastifyPluginAsync = async (server) => {
+  server.get<{ Params: CompleteSoloGameParams }>(
+    "/game-sessions/solo/:id/result",
+    {
+      preHandler: authenticateRequest,
+      schema: { params: completeSoloGameParamsSchema },
+    },
+    async (request, reply) => {
+      const user = getAuthenticatedRequestUser(request);
+      const result = await getSoloSavedResult(user.id, request.params.id);
+
+      if (result === undefined) {
+        return reply.code(404).send({ error: "Solo result not found" });
+      }
+
+      return result;
+    },
+  );
+
   server.post<{ Body: StartSoloGameBody }>(
     "/game-sessions/solo",
     {

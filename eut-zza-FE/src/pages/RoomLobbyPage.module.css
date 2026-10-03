@@ -1,0 +1,7 @@
+.container { max-width: 760px; margin: 20px auto; }
+.eyebrow { color: var(--accent); font-weight: 800; letter-spacing: .15em; }
+.container h1 { color: var(--text-h); }
+.participants { display: grid; gap: 10px; padding: 0; list-style-position: inside; }
+.participants li { display: flex; justify-content: space-between; padding: 16px; border: 1px solid var(--border); border-radius: 10px; }
+.host { color: var(--accent); font-weight: 700; }
+.note { padding: 12px; border-radius: 8px; background: var(--bg); }

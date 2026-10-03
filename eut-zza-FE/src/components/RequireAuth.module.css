@@ -1,0 +1,8 @@
+.status {
+  display: grid;
+  min-height: 100svh;
+  place-content: center;
+  gap: 12px;
+  padding: 24px;
+  text-align: center;
+}

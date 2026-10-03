@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
+import { useLocation, useNavigate } from "react-router";
 import {
   login,
   signUp,
@@ -16,9 +17,10 @@ type AuthenticationInput = {
   credentials: Credentials;
 };
 
-export const AuthPanel = () => {
+export const AuthPanel = ({ mode }: { mode: AuthMode }) => {
   const queryClient = useQueryClient();
-  const [mode, setMode] = useState<AuthMode>("login");
+  const navigate = useNavigate();
+  const location = useLocation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
@@ -36,6 +38,10 @@ export const AuthPanel = () => {
     },
     onSuccess: (user) => {
       queryClient.setQueryData(currentUserQueryKey, user);
+      const from = (location.state as { from?: string } | null)?.from;
+      void navigate(from?.startsWith("/") && !from.startsWith("//") ? from : "/", {
+        replace: true,
+      });
     },
   });
 
@@ -51,8 +57,8 @@ export const AuthPanel = () => {
   };
 
   const changeMode = (nextMode: AuthMode): void => {
-    setMode(nextMode);
     authenticationMutation.reset();
+    void navigate(`/${nextMode}`, { state: location.state, replace: true });
   };
 
   return (

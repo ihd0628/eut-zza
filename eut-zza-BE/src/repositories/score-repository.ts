@@ -7,6 +7,7 @@ import {
   type CompleteSoloGameInput,
   type CompletedSoloGame,
   type GameSession,
+  type SoloSavedResult,
 } from "../domain/game-session.js";
 import {
   GamePlayerNotFoundError,
@@ -24,6 +25,20 @@ type GamePlayerOwnerRow = {
 type SoloGameCompletionContext = GameSession & {
   gamePlayerId: string;
   userId: string;
+};
+
+type SoloSavedResultRow = Pick<
+  SoloSavedResult,
+  "gameSessionId" | "songTitle" | "difficulty"
+> & {
+  scoreId: string;
+  gamePlayerId: string;
+  scoreValue: number;
+  perfectCount: number;
+  greatCount: number;
+  goodCount: number;
+  missCount: number;
+  maxCombo: number;
 };
 
 export const findGamePlayerOwnerId = async (
@@ -274,6 +289,59 @@ export const findScoresByUserId = async (
   );
 
   return result.rows;
+};
+
+export const findSoloSavedResult = async (
+  userId: string,
+  gameSessionId: string,
+): Promise<SoloSavedResult | undefined> => {
+  const result = await pool.query<SoloSavedResultRow>(
+    `
+      SELECT
+        gs.id AS "gameSessionId",
+        so.title AS "songTitle",
+        b.difficulty,
+        sc.id AS "scoreId",
+        gp.id AS "gamePlayerId",
+        sc.score AS "scoreValue",
+        sc.perfect_count AS "perfectCount",
+        sc.great_count AS "greatCount",
+        sc.good_count AS "goodCount",
+        sc.miss_count AS "missCount",
+        sc.max_combo AS "maxCombo"
+      FROM game_sessions AS gs
+      JOIN game_players AS gp ON gp.game_session_id = gs.id
+      JOIN scores AS sc ON sc.game_player_id = gp.id
+      JOIN beatmaps AS b ON b.id = gs.beatmap_id
+      JOIN songs AS so ON so.id = b.song_id
+      WHERE gs.id = $1
+        AND gp.user_id = $2
+        AND gs.mode = 'solo'
+        AND gs.status = 'completed'
+    `,
+    [gameSessionId, userId],
+  );
+
+  const row = result.rows[0];
+  if (row === undefined) {
+    return undefined;
+  }
+
+  return {
+    gameSessionId: row.gameSessionId,
+    songTitle: row.songTitle,
+    difficulty: row.difficulty,
+    score: {
+      id: row.scoreId,
+      gamePlayerId: row.gamePlayerId,
+      score: row.scoreValue,
+      perfectCount: row.perfectCount,
+      greatCount: row.greatCount,
+      goodCount: row.goodCount,
+      missCount: row.missCount,
+      maxCombo: row.maxCombo,
+    },
+  };
 };
 
 export const findBestScoresByUserId = async (

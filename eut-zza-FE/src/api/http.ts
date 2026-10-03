@@ -2,6 +2,12 @@ const API_BASE_URL = (
   import.meta.env.VITE_API_BASE_URL ?? "http://localhost:3001"
 ).replace(/\/$/, "");
 
+export const getWebSocketUrl = (path: string): string => {
+  const url = new URL(path, API_BASE_URL);
+  url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
+  return url.toString();
+};
+
 type ErrorResponseBody = {
   error?: string;
   message?: string;

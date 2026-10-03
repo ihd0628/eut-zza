@@ -35,6 +35,14 @@ export type CompleteSoloGameInput = GameResult & {
   gamePlayerId: string;
 };
 
+export type SavedSoloResult = {
+  gameSessionId: string;
+  score: GameResult & { id: string; gamePlayerId: string };
+};
+
+export const getSoloResult = async (gameSessionId: string): Promise<SavedSoloResult> =>
+  requestJson<SavedSoloResult>(`/game-sessions/solo/${gameSessionId}/result`);
+
 export const startSoloGame = async (
   beatmapId: string,
 ): Promise<StartedSoloGame> => {

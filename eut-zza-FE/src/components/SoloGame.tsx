@@ -17,6 +17,7 @@ import styles from "./SoloGame.module.css";
 
 type SoloGameProps = {
   selection: SoloGameSelection;
+  onSaved: (gameSessionId: string) => void;
 };
 
 const getErrorMessage = (error: unknown): string => {
@@ -34,7 +35,7 @@ const getErrorMessage = (error: unknown): string => {
  * 같은 화면에서 음원 준비를 재시도하더라도 경기를 중복 생성하지 않도록
  * 성공한 결과를 ref에도 보관한다.
  */
-export const SoloGame = ({ selection }: SoloGameProps) => {
+export const SoloGame = ({ selection, onSaved }: SoloGameProps) => {
   const queryClient = useQueryClient();
   const startedGameRef = useRef<StartedSoloGame | null>(null);
   const [gameResult, setGameResult] = useState<GameResult | null>(null);
@@ -54,13 +55,14 @@ export const SoloGame = ({ selection }: SoloGameProps) => {
         ...result,
       });
     },
-    onSuccess: async () => {
+    onSuccess: async (completedGame) => {
       // 이전에 기록 화면을 조회했다면 캐시에는 게임 전 데이터가 남아 있다.
       // 두 Query를 stale 상태로 만들고, 다음 기록 화면 진입 때 최신 값을 받는다.
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: myScoresQueryKey }),
         queryClient.invalidateQueries({ queryKey: myBestScoresQueryKey }),
       ]);
+      onSaved(completedGame.gameSession.id);
     },
   });
 

@@ -1,4 +1,5 @@
 import type { CreateScoreInput, Score } from "./score.js";
+import type { Difficulty } from "./beatmap.js";
 
 export type GameMode = "solo" | "multiplayer";
 
@@ -32,6 +33,13 @@ export type CompleteSoloGameInput = CreateScoreInput & {
 
 export type CompletedSoloGame = {
   gameSession: GameSession;
+  score: Score;
+};
+
+export type SoloSavedResult = {
+  gameSessionId: string;
+  songTitle: string;
+  difficulty: Difficulty;
   score: Score;
 };
 

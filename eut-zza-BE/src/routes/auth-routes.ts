@@ -10,10 +10,17 @@ import {
 } from "../hooks/authentication.js";
 import {
   InvalidCredentialsError,
+  AuthenticationRequiredError,
+  getCurrentUser,
   login,
   logout,
   signUp,
 } from "../services/auth-service.js";
+import type { RoomPresence } from "../services/room-presence.js";
+
+type AuthRoutesOptions = {
+  roomPresence: RoomPresence;
+};
 
 type CredentialsRequestBody = {
   email: string;
@@ -58,7 +65,10 @@ const signUpBodySchema = {
   },
 } as const;
 
-export const authRoutes: FastifyPluginAsync = async (server) => {
+export const authRoutes: FastifyPluginAsync<AuthRoutesOptions> = async (
+  server,
+  { roomPresence },
+) => {
   server.post<{ Body: CredentialsRequestBody }>(
     "/auth/signup",
     {
@@ -133,7 +143,20 @@ export const authRoutes: FastifyPluginAsync = async (server) => {
   );
 
   server.post("/auth/logout", async (request, reply) => {
-    await logout(request.cookies[SESSION_COOKIE_NAME]);
+    const sessionToken = request.cookies[SESSION_COOKIE_NAME];
+
+    if (sessionToken !== undefined) {
+      try {
+        const user = await getCurrentUser(sessionToken);
+        roomPresence.leaveUser(user.id);
+      } catch (error: unknown) {
+        if (!(error instanceof AuthenticationRequiredError)) {
+          throw error;
+        }
+      }
+    }
+
+    await logout(sessionToken);
 
     // 생성할 때와 같은 Path를 지정해야 브라우저가 기존 Cookie를 제거한다.
     reply.clearCookie(SESSION_COOKIE_NAME, {
