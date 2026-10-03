@@ -40,6 +40,7 @@ export const buildApp = async (): Promise<FastifyInstance> => {
 
   await app.register(cors, {
     origin: FRONTEND_ORIGIN,
+    methods: ["GET", "HEAD", "POST", "PATCH"],
     // 브라우저가 다른 Origin의 API에 Cookie를 보내고 받을 수 있게 허용한다.
     credentials: true,
   });

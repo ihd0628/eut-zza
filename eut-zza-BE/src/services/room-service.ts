@@ -1,10 +1,15 @@
 import { randomUUID } from "node:crypto";
 import {
   ROOM_CAPACITY,
+  RoomBeatmapChangedError,
+  RoomBeatmapNotSelectedError,
   RoomFullError,
+  RoomHostRequiredError,
   RoomNotFoundError,
   RoomNotJoinableError,
+  RoomNotWaitingError,
   RoomParticipantNotFoundError,
+  RoomSelectionLockedError,
   UserAlreadyInRoomError,
   type Room,
 } from "../domain/room.js";
@@ -46,7 +51,8 @@ export class RoomStore {
       id: randomUUID(),
       hostUserId: userId,
       status: "waiting",
-      participants: [{ userId, joinedAt: createdAt }],
+      selectedBeatmapId: null,
+      participants: [{ userId, joinedAt: createdAt, isReady: false }],
       createdAt,
     };
 
@@ -78,8 +84,41 @@ export class RoomStore {
 
     // 정원 검사와 추가 사이에 await가 없으므로 단일 Node.js 프로세스 안에서는
     // 다른 요청의 joinRoom()이 이 두 작업 사이에 끼어들 수 없다.
-    room.participants.push({ userId, joinedAt: new Date().toISOString() });
+    room.participants.push({ userId, joinedAt: new Date().toISOString(), isReady: false });
 
+    return snapshotRoom(room);
+  }
+
+  selectBeatmap(roomId: string, userId: string, beatmapId: string): Room {
+    const room = this.rooms.get(roomId);
+    if (room === undefined) throw new RoomNotFoundError();
+    if (room.hostUserId !== userId) throw new RoomHostRequiredError();
+    if (room.status !== "waiting") throw new RoomNotWaitingError();
+
+    // 같은 채보 재선택은 상태 변경이 아니므로 전원 준비 상태에서도 허용한다.
+    if (room.selectedBeatmapId !== beatmapId) {
+      if (room.participants.every((participant) => participant.isReady)) {
+        throw new RoomSelectionLockedError();
+      }
+
+      // 일부 참가자가 준비했더라도 사용자가 정한 규칙에 따라 준비 상태는 유지한다.
+      room.selectedBeatmapId = beatmapId;
+    }
+
+    return snapshotRoom(room);
+  }
+
+  setReady(roomId: string, userId: string, beatmapId: string, ready: boolean): Room {
+    const room = this.rooms.get(roomId);
+    if (room === undefined) throw new RoomNotFoundError();
+    if (room.status !== "waiting") throw new RoomNotWaitingError();
+
+    const participant = room.participants.find((entry) => entry.userId === userId);
+    if (participant === undefined) throw new RoomParticipantNotFoundError();
+    if (room.selectedBeatmapId === null) throw new RoomBeatmapNotSelectedError();
+    if (room.selectedBeatmapId !== beatmapId) throw new RoomBeatmapChangedError();
+
+    participant.isReady = ready;
     return snapshotRoom(room);
   }
 

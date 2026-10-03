@@ -1,11 +1,17 @@
 import type { FastifyPluginAsync } from "fastify";
 import {
+  RoomBeatmapChangedError,
+  RoomBeatmapNotSelectedError,
   RoomFullError,
+  RoomHostRequiredError,
   RoomNotFoundError,
   RoomNotJoinableError,
+  RoomNotWaitingError,
   RoomParticipantNotFoundError,
+  RoomSelectionLockedError,
   UserAlreadyInRoomError,
 } from "../domain/room.js";
+import { beatmapExists } from "../repositories/beatmap-repository.js";
 import {
   authenticateRequest,
   getAuthenticatedRequestUser,
@@ -21,6 +27,32 @@ type RoomRoutesOptions = {
 type RoomParams = {
   id: string;
 };
+
+type SelectBeatmapBody = { beatmapId: string };
+type SetReadyBody = { beatmapId: string; ready: boolean };
+
+const beatmapIdSchema = {
+  type: "string",
+  pattern: "^[1-9][0-9]*$",
+  maxLength: 18,
+} as const;
+
+const selectionBodySchema = {
+  type: "object",
+  additionalProperties: false,
+  required: ["beatmapId"],
+  properties: { beatmapId: beatmapIdSchema },
+} as const;
+
+const readyBodySchema = {
+  type: "object",
+  additionalProperties: false,
+  required: ["beatmapId", "ready"],
+  properties: {
+    beatmapId: beatmapIdSchema,
+    ready: { type: "boolean" },
+  },
+} as const;
 
 const roomParamsSchema = {
   type: "object",
@@ -138,6 +170,81 @@ export const roomRoutes: FastifyPluginAsync<RoomRoutesOptions> = async (
           return reply.code(403).send({ error: error.message });
         }
 
+        throw error;
+      }
+    },
+  );
+
+  server.patch<{ Params: RoomParams; Body: SelectBeatmapBody }>(
+    "/rooms/:id/selection",
+    {
+      preHandler: authenticateRequest,
+      schema: { params: roomParamsSchema, body: selectionBodySchema },
+    },
+    async (request, reply) => {
+      const user = getAuthenticatedRequestUser(request);
+      const currentRoom = roomStore.getRoom(request.params.id);
+      if (currentRoom === undefined) {
+        return reply.code(404).send({ error: "Room not found" });
+      }
+      if (currentRoom.hostUserId !== user.id) {
+        return reply.code(403).send({ error: "Only the room host can select a beatmap" });
+      }
+      if (!await beatmapExists(request.body.beatmapId)) {
+        return reply.code(404).send({ error: "Beatmap not found" });
+      }
+
+      try {
+        // DB 조회 중 방장이 바뀌었더라도 Store에서 권한과 잠금 상태를 다시 검사한다.
+        const room = roomStore.selectBeatmap(request.params.id, user.id, request.body.beatmapId);
+        roomPresence.broadcastRoom(room.id);
+        return { room };
+      } catch (error: unknown) {
+        if (error instanceof RoomNotFoundError) {
+          return reply.code(404).send({ error: error.message });
+        }
+        if (error instanceof RoomHostRequiredError) {
+          return reply.code(403).send({ error: error.message });
+        }
+        if (error instanceof RoomNotWaitingError || error instanceof RoomSelectionLockedError) {
+          return reply.code(409).send({ error: error.message });
+        }
+        throw error;
+      }
+    },
+  );
+
+  server.patch<{ Params: RoomParams; Body: SetReadyBody }>(
+    "/rooms/:id/ready",
+    {
+      preHandler: authenticateRequest,
+      schema: { params: roomParamsSchema, body: readyBodySchema },
+    },
+    async (request, reply) => {
+      try {
+        const user = getAuthenticatedRequestUser(request);
+        const room = roomStore.setReady(
+          request.params.id,
+          user.id,
+          request.body.beatmapId,
+          request.body.ready,
+        );
+        roomPresence.broadcastRoom(room.id);
+        return { room };
+      } catch (error: unknown) {
+        if (error instanceof RoomNotFoundError) {
+          return reply.code(404).send({ error: error.message });
+        }
+        if (error instanceof RoomParticipantNotFoundError) {
+          return reply.code(403).send({ error: error.message });
+        }
+        if (
+          error instanceof RoomNotWaitingError ||
+          error instanceof RoomBeatmapNotSelectedError ||
+          error instanceof RoomBeatmapChangedError
+        ) {
+          return reply.code(409).send({ error: error.message });
+        }
         throw error;
       }
     },

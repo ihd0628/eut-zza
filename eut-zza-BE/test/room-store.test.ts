@@ -1,9 +1,13 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
+  RoomBeatmapChangedError,
+  RoomBeatmapNotSelectedError,
   RoomFullError,
+  RoomHostRequiredError,
   RoomNotFoundError,
   RoomParticipantNotFoundError,
+  RoomSelectionLockedError,
   UserAlreadyInRoomError,
 } from "../src/domain/room.js";
 import { RoomStore } from "../src/services/room-service.js";
@@ -14,8 +18,55 @@ test("방을 만들면 생성자가 방장이자 첫 참가자가 된다", () =>
 
   assert.equal(room.hostUserId, "host");
   assert.equal(room.status, "waiting");
+  assert.equal(room.selectedBeatmapId, null);
+  assert.equal(room.participants[0]?.isReady, false);
   assert.deepEqual(room.participants.map(({ userId }) => userId), ["host"]);
   assert.deepEqual(store.listRooms(), [room]);
+});
+
+test("방장만 채보를 선택하고, 선택 전에는 준비할 수 없다", () => {
+  const store = new RoomStore();
+  const room = store.createRoom("host");
+  store.joinRoom(room.id, "guest");
+
+  assert.throws(() => store.setReady(room.id, "guest", "1", true), RoomBeatmapNotSelectedError);
+  assert.throws(() => store.selectBeatmap(room.id, "guest", "1"), RoomHostRequiredError);
+  assert.equal(store.selectBeatmap(room.id, "host", "1").selectedBeatmapId, "1");
+});
+
+test("일부만 준비했다면 채보를 변경해도 기존 준비 상태를 유지한다", () => {
+  const store = new RoomStore();
+  const room = store.createRoom("host");
+  store.joinRoom(room.id, "guest");
+  store.selectBeatmap(room.id, "host", "1");
+  store.setReady(room.id, "guest", "1", true);
+
+  const updated = store.selectBeatmap(room.id, "host", "2");
+
+  assert.equal(updated.selectedBeatmapId, "2");
+  assert.equal(updated.participants.find(({ userId }) => userId === "guest")?.isReady, true);
+  assert.throws(() => store.setReady(room.id, "host", "1", true), RoomBeatmapChangedError);
+});
+
+test("전원 준비하면 채보 변경을 막고, 준비 취소나 새 참가자 입장 후 다시 허용한다", () => {
+  const store = new RoomStore();
+  const room = store.createRoom("host");
+  store.joinRoom(room.id, "guest");
+  store.selectBeatmap(room.id, "host", "1");
+  store.setReady(room.id, "host", "1", true);
+  store.setReady(room.id, "guest", "1", true);
+
+  assert.throws(() => store.selectBeatmap(room.id, "host", "2"), RoomSelectionLockedError);
+  assert.equal(store.selectBeatmap(room.id, "host", "1").selectedBeatmapId, "1");
+
+  store.setReady(room.id, "guest", "1", false);
+  store.selectBeatmap(room.id, "host", "2");
+  store.setReady(room.id, "guest", "2", true);
+  assert.throws(() => store.selectBeatmap(room.id, "host", "3"), RoomSelectionLockedError);
+
+  const joined = store.joinRoom(room.id, "new-guest");
+  assert.equal(joined.participants.at(-1)?.isReady, false);
+  assert.equal(store.selectBeatmap(room.id, "host", "3").selectedBeatmapId, "3");
 });
 
 test("방장이 퇴장하면 가장 먼저 입장한 남은 참가자가 방장이 된다", () => {

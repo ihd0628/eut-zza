@@ -2,6 +2,15 @@
 .eyebrow { color: var(--accent); font-weight: 800; letter-spacing: .15em; }
 .container h1 { color: var(--text-h); }
 .participants { display: grid; gap: 10px; padding: 0; list-style-position: inside; }
-.participants li { display: flex; justify-content: space-between; padding: 16px; border: 1px solid var(--border); border-radius: 10px; }
+.participants li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px; border: 1px solid var(--border); border-radius: 10px; }
 .host { color: var(--accent); font-weight: 700; }
 .note { padding: 12px; border-radius: 8px; background: var(--bg); }
+.selection, .readySection { margin: 28px 0; }
+.selection h2, .readySection h2 { color: var(--text-h); }
+.selectLabel { display: grid; gap: 8px; max-width: 480px; font-weight: 700; }
+.select { padding: 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text-h); }
+.select:disabled { opacity: .6; }
+.readyButton { padding: 10px 16px; border: 1px solid var(--accent-border); border-radius: 8px; background: var(--bg); color: var(--text-h); cursor: pointer; }
+.readyButton:disabled { opacity: .6; cursor: not-allowed; }
+.error { color: #dc2626; }
+@media (max-width: 600px) { .participants li { flex-wrap: wrap; } }
