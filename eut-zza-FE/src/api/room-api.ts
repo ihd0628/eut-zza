@@ -6,17 +6,46 @@ export type RoomParticipant = {
   isReady: boolean;
   preparedBeatmapId: string | null;
 };
+export type MultiplayerResultStatus =
+  | "playing"
+  | "submitted"
+  | "disconnected"
+  | "timed_out";
+export type RoomGamePlayer = {
+  userId: string;
+  gamePlayerId: string;
+  score: number;
+  combo: number;
+  resultStatus: MultiplayerResultStatus;
+};
+export type MultiplayerResultEntry = {
+  userId: string;
+  email: string;
+  gamePlayerId: string;
+  resultStatus: MultiplayerResultStatus;
+  score: number | null;
+  perfectCount: number | null;
+  greatCount: number | null;
+  goodCount: number | null;
+  missCount: number | null;
+  maxCombo: number | null;
+  rank: number | null;
+  isWinner: boolean;
+};
 export type RoomGame = {
   gameSessionId: string;
   beatmapId: string;
   startAtServerMs: number;
-  players: { userId: string; gamePlayerId: string }[];
+  resultDeadlineAtServerMs: number;
+  players: RoomGamePlayer[];
+  results: MultiplayerResultEntry[] | null;
 };
 export type Room = {
   id: string;
   hostUserId: string;
-  status: "waiting" | "starting" | "playing";
+  status: "waiting" | "starting" | "playing" | "finished";
   selectedBeatmapId: string | null;
+  lastCompletedGameSessionId: string | null;
   participants: RoomParticipant[];
   currentGame: RoomGame | null;
   createdAt: string;
@@ -36,6 +65,16 @@ export const joinRoom = async (roomId: string): Promise<Room> =>
 
 export const leaveRoom = async (roomId: string): Promise<Room | null> =>
   (await requestJson<{ room: Room | null }>(`/rooms/${roomId}/leave`, { method: "POST" })).room;
+
+export const returnRoomToLobby = async (
+  roomId: string,
+  gameSessionId: string,
+): Promise<Room> =>
+  (await requestJson<{ room: Room }>(`/rooms/${roomId}/lobby`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ gameSessionId }),
+  })).room;
 
 export const selectRoomBeatmap = async (roomId: string, beatmapId: string): Promise<Room> =>
   (await requestJson<{ room: Room }>(`/rooms/${roomId}/selection`, {

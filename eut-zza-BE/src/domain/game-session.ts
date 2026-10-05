@@ -20,6 +20,34 @@ export type GamePlayer = {
   id: string;
   gameSessionId: string;
   userId: string;
+  resultStatus: MultiplayerResultStatus;
+};
+
+export type MultiplayerResultStatus =
+  | "playing"
+  | "submitted"
+  | "disconnected"
+  | "timed_out";
+
+export type MultiplayerResultEntry = {
+  userId: string;
+  email: string;
+  gamePlayerId: string;
+  resultStatus: MultiplayerResultStatus;
+  score: number | null;
+  perfectCount: number | null;
+  greatCount: number | null;
+  goodCount: number | null;
+  missCount: number | null;
+  maxCombo: number | null;
+  rank: number | null;
+  isWinner: boolean;
+};
+
+export type MultiplayerResultState = {
+  gameSessionId: string;
+  status: GameSessionStatus;
+  players: MultiplayerResultEntry[];
 };
 
 export type StartedSoloGame = {
@@ -31,6 +59,10 @@ export type StartedMultiplayerGame = {
   gameSession: GameSession;
   gamePlayers: GamePlayer[];
   startAtServerMs: number;
+};
+
+export type CompleteMultiplayerGameInput = CreateScoreInput & {
+  gameSessionId: string;
 };
 
 export type CompleteSoloGameInput = CreateScoreInput & {
@@ -74,5 +106,33 @@ export class SoloGameNotPlayingError extends Error {
   constructor() {
     super("Solo game is not playing");
     this.name = "SoloGameNotPlayingError";
+  }
+}
+
+export class MultiplayerGameNotFoundError extends Error {
+  constructor() {
+    super("Multiplayer game not found");
+    this.name = "MultiplayerGameNotFoundError";
+  }
+}
+
+export class MultiplayerGameCompletionForbiddenError extends Error {
+  constructor() {
+    super("You cannot submit a result for this multiplayer game");
+    this.name = "MultiplayerGameCompletionForbiddenError";
+  }
+}
+
+export class MultiplayerGameNotPlayingError extends Error {
+  constructor() {
+    super("Multiplayer game is not accepting results");
+    this.name = "MultiplayerGameNotPlayingError";
+  }
+}
+
+export class MultiplayerResultConflictError extends Error {
+  constructor() {
+    super("A different result was already submitted for this player");
+    this.name = "MultiplayerResultConflictError";
   }
 }

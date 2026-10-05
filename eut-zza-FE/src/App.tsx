@@ -4,6 +4,7 @@ import { AppLayout } from "./components/AppLayout";
 import { RequireAuth } from "./components/RequireAuth";
 import { ModeSelectionPage } from "./pages/ModeSelectionPage";
 import { MultiplayerGamePage } from "./pages/MultiplayerGamePage";
+import { MultiplayerResultPage } from "./pages/MultiplayerResultPage";
 import { RecordsPage } from "./pages/RecordsPage";
 import { RoomBoundary } from "./pages/RoomBoundary";
 import { RoomListPage } from "./pages/RoomListPage";
@@ -34,6 +35,7 @@ export const router = createBrowserRouter([
             children: [
               { index: true, element: <RoomLobbyPage /> },
               { path: "play", element: <MultiplayerGamePage /> },
+              { path: "results/:gameSessionId", element: <MultiplayerResultPage /> },
             ],
           },
         ],

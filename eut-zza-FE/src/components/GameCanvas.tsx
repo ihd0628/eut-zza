@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { SAMPLE_NOTES } from "../constants";
 import type { AudioManager } from "../game/AudioManager";
 import { GameEngine } from "../game/GameEngine";
-import type { GameResult } from "../game/types";
+import type { GameProgress, GameResult } from "../game/types";
 import styles from "./GameCanvas.module.css";
 
 // 이 숫자들은 Canvas 내부 그림판(backing store)의 크기다.
@@ -22,6 +22,7 @@ type GameCanvasProps = {
   onComplete: (result: GameResult) => void;
   audioManager?: AudioManager;
   startAtClientMs?: number;
+  onProgress?: (progress: GameProgress) => void;
 };
 
 type StartStatus = "idle" | "starting" | "running" | "completed";
@@ -40,6 +41,7 @@ export const GameCanvas = ({
   onComplete,
   audioManager,
   startAtClientMs,
+  onProgress,
 }: GameCanvasProps) => {
   // 첫 React render 시점에는 아직 <canvas> DOM이 생성되기 전이므로 초기값은 null이다.
   // React commit이 끝나면 React가 canvasRef.current에 실제 HTMLCanvasElement를 넣어준다.
@@ -81,6 +83,7 @@ export const GameCanvas = ({
         onComplete(result);
       },
       audioManager,
+      onProgress,
     );
 
     gameEngineRef.current = gameEngine;
@@ -114,7 +117,7 @@ export const GameCanvas = ({
         setStartError(getErrorMessage(error));
       }
     }
-  }, [audioManager, audioUrl, onComplete, onCreateGame, startAtClientMs]);
+  }, [audioManager, audioUrl, onComplete, onCreateGame, onProgress, startAtClientMs]);
 
   useEffect(() => {
     mountedRef.current = true;

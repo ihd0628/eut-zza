@@ -1,5 +1,5 @@
 import type WebSocket from "ws";
-import type { Room } from "../domain/room.js";
+import type { Room, RoomGamePlayer } from "../domain/room.js";
 import { RoomStore } from "./room-service.js";
 
 export const ROOM_RECONNECT_GRACE_MS = 10_000;
@@ -7,7 +7,14 @@ export const ROOM_HEARTBEAT_INTERVAL_MS = 30_000;
 
 type RoomEvent =
   | { type: "room_updated"; room: Room }
-  | { type: "room_deleted"; roomId: string };
+  | { type: "room_deleted"; roomId: string }
+  | {
+      type: "game_progress";
+      gameSessionId: string;
+      player: RoomGamePlayer;
+    };
+
+type PlayingDepartureHandler = (roomId: string, userId: string) => Promise<void>;
 
 // 방 참가 정보(RoomStore)와 브라우저 연결(WebSocket)은 서로 다른 상태다.
 // 새로고침으로 연결만 잠깐 교체될 때는 참가 정보를 유지한다.
@@ -16,6 +23,7 @@ export class RoomPresence {
   private readonly departureTimers = new Map<string, NodeJS.Timeout>();
   private readonly awaitingPong = new WeakSet<WebSocket>();
   private readonly heartbeatTimer: NodeJS.Timeout;
+  private playingDepartureHandler: PlayingDepartureHandler | null = null;
 
   constructor(
     private readonly roomStore: RoomStore,
@@ -64,16 +72,36 @@ export class RoomPresence {
     const key = this.timerKey(roomId, userId);
     const timer = setTimeout(() => {
       this.departureTimers.delete(key);
-
-      if (this.roomStore.getRoom(roomId)?.participants.some(
-        (participant) => participant.userId === userId,
-      )) {
-        this.leaveRoom(roomId, userId);
-      }
+      void this.handleDeparture(roomId, userId);
     }, this.graceMs);
 
     timer.unref();
     this.departureTimers.set(key, timer);
+  }
+
+  private async handleDeparture(roomId: string, userId: string): Promise<void> {
+    const room = this.roomStore.getRoom(roomId);
+    if (!room?.participants.some((participant) => participant.userId === userId)) {
+      return;
+    }
+
+    if (room.status === "playing" && this.playingDepartureHandler !== null) {
+      try {
+        await this.playingDepartureHandler(roomId, userId);
+      } catch (error: unknown) {
+        console.error("[RoomPresence] Failed to mark disconnected player", error);
+      }
+    }
+
+    if (this.roomStore.getRoom(roomId)?.participants.some(
+      (participant) => participant.userId === userId,
+    )) {
+      this.leaveRoom(roomId, userId);
+    }
+  }
+
+  setPlayingDepartureHandler(handler: PlayingDepartureHandler): void {
+    this.playingDepartureHandler = handler;
   }
 
   // HTTP 입장 뒤 대기실 WS가 끝내 열리지 않은 경우에도 유령 참가자가 남지 않게 한다.
@@ -131,6 +159,22 @@ export class RoomPresence {
       ? { type: "room_deleted", roomId }
       : { type: "room_updated", room };
 
+    this.broadcastEvent(roomId, event);
+  }
+
+  broadcastGameProgress(
+    roomId: string,
+    gameSessionId: string,
+    player: RoomGamePlayer,
+  ): void {
+    this.broadcastEvent(roomId, {
+      type: "game_progress",
+      gameSessionId,
+      player: { ...player },
+    });
+  }
+
+  private broadcastEvent(roomId: string, event: RoomEvent): void {
     for (const userConnections of this.connections.get(roomId)?.values() ?? []) {
       for (const socket of userConnections) {
         if (socket.readyState === socket.OPEN) {
@@ -171,5 +215,6 @@ export class RoomPresence {
     }
     this.departureTimers.clear();
     this.connections.clear();
+    this.playingDepartureHandler = null;
   }
 }

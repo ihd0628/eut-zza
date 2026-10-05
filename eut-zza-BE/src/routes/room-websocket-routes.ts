@@ -5,10 +5,12 @@ import {
 } from "../hooks/authentication.js";
 import type { RoomPresence } from "../services/room-presence.js";
 import type { RoomStore } from "../services/room-service.js";
+import type { MultiplayerGameCoordinator } from "../services/multiplayer-game-coordinator.js";
 
 type RoomWebsocketRoutesOptions = {
   roomStore: RoomStore;
   roomPresence: RoomPresence;
+  multiplayerGameCoordinator: MultiplayerGameCoordinator;
 };
 
 type RoomParams = {
@@ -17,7 +19,7 @@ type RoomParams = {
 
 export const roomWebsocketRoutes: FastifyPluginAsync<RoomWebsocketRoutesOptions> = async (
   server,
-  { roomStore, roomPresence },
+  { roomStore, roomPresence, multiplayerGameCoordinator },
 ) => {
   server.get<{ Params: RoomParams }>(
     "/ws/rooms/:id",
@@ -46,6 +48,9 @@ export const roomWebsocketRoutes: FastifyPluginAsync<RoomWebsocketRoutesOptions>
           const message = JSON.parse(rawData.toString()) as {
             type?: unknown;
             clientSentAtMs?: unknown;
+            gameSessionId?: unknown;
+            score?: unknown;
+            combo?: unknown;
           };
 
           if (
@@ -58,6 +63,23 @@ export const roomWebsocketRoutes: FastifyPluginAsync<RoomWebsocketRoutesOptions>
               clientSentAtMs: message.clientSentAtMs,
               serverTimeMs: Date.now(),
             }));
+          } else if (
+            message.type === "game_progress" &&
+            typeof message.gameSessionId === "string" &&
+            typeof message.score === "number" &&
+            typeof message.combo === "number"
+          ) {
+            try {
+              multiplayerGameCoordinator.updateProgress(
+                room.id,
+                user.id,
+                message.gameSessionId,
+                message.score,
+                message.combo,
+              );
+            } catch {
+              // 오래되거나 유효하지 않은 진행 메시지는 경기 상태를 바꾸지 않는다.
+            }
           }
         } catch {
           // 이후 게임 메시지와 독립적으로, 알 수 없는 형식은 이 단계에서 무시한다.

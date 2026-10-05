@@ -10,6 +10,7 @@ type SongBeatmapRow = {
   difficulty: Difficulty | null;
   level: number | null;
   noteCount: number | null;
+  durationMs: number | null;
 };
 
 const mapSongRows = (rows: SongBeatmapRow[]): Song[] => {
@@ -34,13 +35,15 @@ const mapSongRows = (rows: SongBeatmapRow[]): Song[] => {
       row.beatmapId !== null &&
       row.difficulty !== null &&
       row.level !== null &&
-      row.noteCount !== null
+      row.noteCount !== null &&
+      row.durationMs !== null
     ) {
       song.beatmaps.push({
         id: row.beatmapId,
         difficulty: row.difficulty,
         level: row.level,
         noteCount: row.noteCount,
+        durationMs: row.durationMs,
       });
     }
   }
@@ -58,7 +61,8 @@ export const findAllSongs = async (): Promise<Song[]> => {
       b.id AS "beatmapId",
       b.difficulty,
       b.level,
-      b.note_count AS "noteCount"
+      b.note_count AS "noteCount",
+      b.duration_ms AS "durationMs"
     FROM songs AS s
     LEFT JOIN beatmaps AS b
       ON b.song_id = s.id
@@ -87,7 +91,8 @@ export const findSongById = async (
         b.id AS "beatmapId",
         b.difficulty,
         b.level,
-        b.note_count AS "noteCount"
+        b.note_count AS "noteCount",
+        b.duration_ms AS "durationMs"
       FROM songs AS s
       LEFT JOIN beatmaps AS b
         ON b.song_id = s.id

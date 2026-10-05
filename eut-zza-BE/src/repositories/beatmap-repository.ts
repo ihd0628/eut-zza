@@ -9,3 +9,14 @@ export const beatmapExists = async (beatmapId: string): Promise<boolean> => {
 
   return result.rows[0]?.exists ?? false;
 };
+
+export const findBeatmapDurationMs = async (
+  beatmapId: string,
+): Promise<number | undefined> => {
+  const result = await pool.query<{ durationMs: number }>(
+    `SELECT duration_ms AS "durationMs" FROM beatmaps WHERE id = $1`,
+    [beatmapId],
+  );
+
+  return result.rows[0]?.durationMs;
+};

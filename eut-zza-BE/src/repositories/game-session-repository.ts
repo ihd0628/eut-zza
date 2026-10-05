@@ -54,7 +54,8 @@ export const createSoloGame = async (
         RETURNING
           id,
           game_session_id AS "gameSessionId",
-          user_id AS "userId"
+          user_id AS "userId",
+          result_status AS "resultStatus"
       `,
       [gameSession.id, userId],
     );
@@ -136,7 +137,8 @@ export const createMultiplayerGame = async (
           RETURNING
             id,
             game_session_id AS "gameSessionId",
-            user_id AS "userId"
+            user_id AS "userId",
+            result_status AS "resultStatus"
         `,
         [gameSession.id, userId],
       );

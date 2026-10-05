@@ -1,5 +1,8 @@
 import { requestJson } from "./http";
 import type { GameResult } from "../game/types";
+import type {
+  MultiplayerResultEntry,
+} from "./room-api";
 
 export type GameMode = "solo" | "multiplayer";
 
@@ -40,6 +43,12 @@ export type SavedSoloResult = {
   score: GameResult & { id: string; gamePlayerId: string };
 };
 
+export type MultiplayerResultState = {
+  gameSessionId: string;
+  status: GameSessionStatus;
+  players: MultiplayerResultEntry[];
+};
+
 export const getSoloResult = async (gameSessionId: string): Promise<SavedSoloResult> =>
   requestJson<SavedSoloResult>(`/game-sessions/solo/${gameSessionId}/result`);
 
@@ -70,3 +79,23 @@ export const completeSoloGame = async (
     },
   );
 };
+
+export const submitMultiplayerResult = async (
+  gameSessionId: string,
+  input: CompleteSoloGameInput,
+): Promise<MultiplayerResultState> =>
+  requestJson<MultiplayerResultState>(
+    `/game-sessions/multiplayer/${gameSessionId}/results`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    },
+  );
+
+export const getMultiplayerResult = async (
+  gameSessionId: string,
+): Promise<MultiplayerResultState> =>
+  requestJson<MultiplayerResultState>(
+    `/game-sessions/multiplayer/${gameSessionId}/result`,
+  );

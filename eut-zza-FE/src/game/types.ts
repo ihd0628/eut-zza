@@ -49,4 +49,10 @@ export interface GameResult {
   maxCombo: number;
 }
 
+export type GameProgress = {
+  score: number;
+  combo: number;
+};
+
 export type GameCompleteCallback = (result: GameResult) => void;
+export type GameProgressCallback = (progress: GameProgress) => void;

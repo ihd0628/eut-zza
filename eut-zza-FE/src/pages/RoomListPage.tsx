@@ -57,7 +57,9 @@ export const RoomListPage = () => {
                   ? "대기 중"
                   : room.status === "starting"
                     ? "시작 중"
-                    : "진행 중"} · {room.participants.length}/4명
+                    : room.status === "playing"
+                      ? "진행 중"
+                      : "경기 종료"} · {room.participants.length}/4명
               </p>
             </div>
             {myRoom?.id === room.id ? (

@@ -8,4 +8,5 @@ export type BeatmapSummary = {
   difficulty: Difficulty;
   level: number;
   noteCount: number;
+  durationMs: number;
 };

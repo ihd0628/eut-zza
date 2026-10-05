@@ -27,6 +27,7 @@ import type {
   GameCompleteCallback,
   GameInputEvent,
   GameKey,
+  GameProgressCallback,
   GameResult,
   Judgment,
   LaneIndex,
@@ -55,6 +56,7 @@ export class GameEngine {
   private readonly audioManager: AudioManager;
   private readonly audioUrl: string;
   private readonly onComplete: GameCompleteCallback;
+  private readonly onProgress?: GameProgressCallback;
   private readonly judgedNoteIds = new Set<string>();
   private readonly notesByLane: Record<LaneIndex, readonly Note[]>;
   private readonly noteRenderLookaheadMs: number;
@@ -76,12 +78,14 @@ export class GameEngine {
     audioUrl: string,
     onComplete: GameCompleteCallback,
     audioManager = new AudioManager(),
+    onProgress?: GameProgressCallback,
   ) {
     this.audioManager = audioManager;
     this.renderer = new CanvasRenderer(canvas);
     this.noteRenderLookaheadMs = this.renderer.getNoteRenderLookaheadMs();
     this.audioUrl = audioUrl;
     this.onComplete = onComplete;
+    this.onProgress = onProgress;
 
     this.gameLoop = new GameLoop(this.handleFrame);
     this.inputManager = new InputManager(this.handleInput);
@@ -172,23 +176,20 @@ export class GameEngine {
     if (judgment === "MISS") {
       this.missCount += 1;
       this.combo = 0;
-      return;
+    } else {
+      this.combo += 1;
+      this.maxCombo = Math.max(this.maxCombo, this.combo);
+
+      if (judgment === "PERFECT") {
+        this.perfectCount += 1;
+      } else if (judgment === "GREAT") {
+        this.greatCount += 1;
+      } else {
+        this.goodCount += 1;
+      }
     }
 
-    this.combo += 1;
-    this.maxCombo = Math.max(this.maxCombo, this.combo);
-
-    if (judgment === "PERFECT") {
-      this.perfectCount += 1;
-      return;
-    }
-
-    if (judgment === "GREAT") {
-      this.greatCount += 1;
-      return;
-    }
-
-    this.goodCount += 1;
+    this.onProgress?.({ score: this.score, combo: this.combo });
   }
 
   private completeGameIfAllNotesAreJudged(): void {

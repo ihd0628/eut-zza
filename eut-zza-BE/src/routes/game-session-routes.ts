@@ -1,6 +1,10 @@
 import type { FastifyPluginAsync } from "fastify";
 import {
   BeatmapNotFoundError,
+  MultiplayerGameCompletionForbiddenError,
+  MultiplayerGameNotFoundError,
+  MultiplayerGameNotPlayingError,
+  MultiplayerResultConflictError,
   SoloGameCompletionForbiddenError,
   SoloGameNotFoundError,
   SoloGameNotPlayingError,
@@ -19,6 +23,7 @@ import {
   getSoloSavedResult,
   startSoloGame,
 } from "../services/game-session-service.js";
+import type { MultiplayerGameCoordinator } from "../services/multiplayer-game-coordinator.js";
 
 type StartSoloGameBody = {
   beatmapId: string;
@@ -26,6 +31,10 @@ type StartSoloGameBody = {
 
 type CompleteSoloGameParams = {
   id: string;
+};
+
+type GameSessionRoutesOptions = {
+  multiplayerGameCoordinator: MultiplayerGameCoordinator;
 };
 
 const startSoloGameBodySchema = {
@@ -87,7 +96,10 @@ const completeSoloGameBodySchema = {
   },
 } as const;
 
-export const gameSessionRoutes: FastifyPluginAsync = async (server) => {
+export const gameSessionRoutes: FastifyPluginAsync<GameSessionRoutesOptions> = async (
+  server,
+  { multiplayerGameCoordinator },
+) => {
   server.get<{ Params: CompleteSoloGameParams }>(
     "/game-sessions/solo/:id/result",
     {
@@ -181,6 +193,66 @@ export const gameSessionRoutes: FastifyPluginAsync = async (server) => {
           });
         }
 
+        throw error;
+      }
+    },
+  );
+
+  server.get<{ Params: CompleteSoloGameParams }>(
+    "/game-sessions/multiplayer/:id/result",
+    {
+      preHandler: authenticateRequest,
+      schema: { params: completeSoloGameParamsSchema },
+    },
+    async (request, reply) => {
+      try {
+        const user = getAuthenticatedRequestUser(request);
+        return await multiplayerGameCoordinator.getResult(request.params.id, user.id);
+      } catch (error: unknown) {
+        if (error instanceof MultiplayerGameNotFoundError) {
+          return reply.code(404).send({ error: error.message });
+        }
+        if (error instanceof MultiplayerGameCompletionForbiddenError) {
+          return reply.code(403).send({ error: error.message });
+        }
+        throw error;
+      }
+    },
+  );
+
+  server.post<{
+    Params: CompleteSoloGameParams;
+    Body: CreateScoreInput;
+  }>(
+    "/game-sessions/multiplayer/:id/results",
+    {
+      preHandler: authenticateRequest,
+      schema: {
+        params: completeSoloGameParamsSchema,
+        body: completeSoloGameBodySchema,
+      },
+    },
+    async (request, reply) => {
+      try {
+        const user = getAuthenticatedRequestUser(request);
+        const completed = await multiplayerGameCoordinator.submitResult(user.id, {
+          gameSessionId: request.params.id,
+          ...request.body,
+        });
+        return reply.code(200).send(completed.resultState);
+      } catch (error: unknown) {
+        if (error instanceof MultiplayerGameNotFoundError) {
+          return reply.code(404).send({ error: error.message });
+        }
+        if (error instanceof MultiplayerGameCompletionForbiddenError) {
+          return reply.code(403).send({ error: error.message });
+        }
+        if (
+          error instanceof MultiplayerGameNotPlayingError ||
+          error instanceof MultiplayerResultConflictError
+        ) {
+          return reply.code(409).send({ error: error.message });
+        }
         throw error;
       }
     },

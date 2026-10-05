@@ -4,6 +4,7 @@ import {
   RoomBeatmapChangedError,
   RoomBeatmapNotSelectedError,
   RoomFullError,
+  RoomGameNotFinishedError,
   RoomHostRequiredError,
   RoomNotEnoughParticipantsError,
   RoomNotFoundError,
@@ -22,11 +23,12 @@ import {
 } from "../hooks/authentication.js";
 import type { RoomStore } from "../services/room-service.js";
 import type { RoomPresence } from "../services/room-presence.js";
-import { startMultiplayerGame } from "../services/game-session-service.js";
+import type { MultiplayerGameCoordinator } from "../services/multiplayer-game-coordinator.js";
 
 type RoomRoutesOptions = {
   roomStore: RoomStore;
   roomPresence: RoomPresence;
+  multiplayerGameCoordinator: MultiplayerGameCoordinator;
 };
 
 type RoomParams = {
@@ -35,6 +37,7 @@ type RoomParams = {
 
 type SelectBeatmapBody = { beatmapId: string };
 type SetReadyBody = { beatmapId: string; ready: boolean };
+type ReturnToLobbyBody = { gameSessionId: string };
 
 const beatmapIdSchema = {
   type: "string",
@@ -59,6 +62,19 @@ const readyBodySchema = {
   },
 } as const;
 
+const returnToLobbyBodySchema = {
+  type: "object",
+  additionalProperties: false,
+  required: ["gameSessionId"],
+  properties: {
+    gameSessionId: {
+      type: "string",
+      pattern: "^[1-9][0-9]*$",
+      maxLength: 18,
+    },
+  },
+} as const;
+
 const roomParamsSchema = {
   type: "object",
   additionalProperties: false,
@@ -73,7 +89,7 @@ const roomParamsSchema = {
 
 export const roomRoutes: FastifyPluginAsync<RoomRoutesOptions> = async (
   server,
-  { roomStore, roomPresence },
+  { roomStore, roomPresence, multiplayerGameCoordinator },
 ) => {
   server.get(
     "/rooms",
@@ -164,6 +180,9 @@ export const roomRoutes: FastifyPluginAsync<RoomRoutesOptions> = async (
     async (request, reply) => {
       try {
         const user = getAuthenticatedRequestUser(request);
+        if (roomStore.getRoom(request.params.id)?.status === "playing") {
+          await multiplayerGameCoordinator.markDisconnected(request.params.id, user.id);
+        }
         const room = roomPresence.leaveRoom(request.params.id, user.id);
         return { room };
       } catch (error: unknown) {
@@ -175,6 +194,40 @@ export const roomRoutes: FastifyPluginAsync<RoomRoutesOptions> = async (
           return reply.code(403).send({ error: error.message });
         }
 
+        throw error;
+      }
+    },
+  );
+
+  server.post<{ Params: RoomParams; Body: ReturnToLobbyBody }>(
+    "/rooms/:id/lobby",
+    {
+      preHandler: authenticateRequest,
+      schema: {
+        params: roomParamsSchema,
+        body: returnToLobbyBodySchema,
+      },
+    },
+    async (request, reply) => {
+      try {
+        const user = getAuthenticatedRequestUser(request);
+        const room = roomStore.returnToLobby(
+          request.params.id,
+          user.id,
+          request.body.gameSessionId,
+        );
+        roomPresence.broadcastRoom(room.id);
+        return { room };
+      } catch (error: unknown) {
+        if (error instanceof RoomNotFoundError) {
+          return reply.code(404).send({ error: error.message });
+        }
+        if (error instanceof RoomParticipantNotFoundError) {
+          return reply.code(403).send({ error: error.message });
+        }
+        if (error instanceof RoomGameNotFinishedError) {
+          return reply.code(409).send({ error: error.message });
+        }
         throw error;
       }
     },
@@ -299,7 +352,7 @@ export const roomRoutes: FastifyPluginAsync<RoomRoutesOptions> = async (
     async (request, reply) => {
       try {
         const user = getAuthenticatedRequestUser(request);
-        const room = await startMultiplayerGame(roomStore, request.params.id, user.id);
+        const room = await multiplayerGameCoordinator.startGame(request.params.id, user.id);
         roomPresence.broadcastRoom(room.id);
         return reply.code(201).send({ room });
       } catch (error: unknown) {

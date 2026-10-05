@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
+  InvalidGameProgressError,
   RoomAudioNotPreparedError,
   RoomBeatmapChangedError,
   RoomBeatmapNotSelectedError,
@@ -224,10 +225,12 @@ test("시작 완료 시 모든 참가자가 같은 경기와 각자의 참가 ID
     gameSessionId: "10",
     beatmapId: "1",
     startAtServerMs: 1_000_000,
+    resultDeadlineAtServerMs: 1_070_000,
     players: [
-      { userId: "host", gamePlayerId: "20" },
-      { userId: "guest", gamePlayerId: "21" },
+      { userId: "host", gamePlayerId: "20", score: 0, combo: 0, resultStatus: "playing" },
+      { userId: "guest", gamePlayerId: "21", score: 0, combo: 0, resultStatus: "playing" },
     ],
+    results: null,
   });
 
   assert.equal(started.status, "playing");
@@ -236,4 +239,143 @@ test("시작 완료 시 모든 참가자가 같은 경기와 각자의 참가 ID
     "20",
     "21",
   ]);
+});
+
+test("완료된 경기에서 대기실로 돌아가면 참가자는 유지하고 준비 상태만 초기화한다", () => {
+  const store = new RoomStore();
+  const room = store.createRoom("host");
+  store.joinRoom(room.id, "guest");
+  store.selectBeatmap(room.id, "host", "1");
+  for (const userId of ["host", "guest"]) {
+    store.setReady(room.id, userId, "1", true);
+    store.markAudioPrepared(room.id, userId, "1");
+  }
+  store.beginStart(room.id, "host");
+  store.completeStart(room.id, {
+    gameSessionId: "10",
+    beatmapId: "1",
+    startAtServerMs: 1_000_000,
+    resultDeadlineAtServerMs: 1_070_000,
+    players: [
+      { userId: "host", gamePlayerId: "20", score: 1_000, combo: 1, resultStatus: "playing" },
+      { userId: "guest", gamePlayerId: "21", score: 700, combo: 1, resultStatus: "playing" },
+    ],
+    results: null,
+  });
+  store.applyMultiplayerResultState(room.id, {
+    gameSessionId: "10",
+    status: "completed",
+    players: [
+      {
+        userId: "host",
+        email: "host@example.com",
+        gamePlayerId: "20",
+        resultStatus: "submitted",
+        score: 1_000,
+        perfectCount: 1,
+        greatCount: 0,
+        goodCount: 0,
+        missCount: 0,
+        maxCombo: 1,
+        rank: 1,
+        isWinner: true,
+      },
+      {
+        userId: "guest",
+        email: "guest@example.com",
+        gamePlayerId: "21",
+        resultStatus: "submitted",
+        score: 700,
+        perfectCount: 0,
+        greatCount: 1,
+        goodCount: 0,
+        missCount: 0,
+        maxCombo: 1,
+        rank: 2,
+        isWinner: false,
+      },
+    ],
+  });
+
+  const returned = store.returnToLobby(room.id, "host", "10");
+  const retried = store.returnToLobby(room.id, "guest", "10");
+
+  assert.equal(returned.status, "waiting");
+  assert.equal(returned.currentGame, null);
+  assert.equal(returned.lastCompletedGameSessionId, "10");
+  assert.equal(returned.selectedBeatmapId, "1");
+  assert.deepEqual(returned.participants.map(({ userId }) => userId), ["host", "guest"]);
+  assert.ok(returned.participants.every(
+    ({ isReady, preparedBeatmapId }) => !isReady && preparedBeatmapId === null,
+  ));
+  assert.deepEqual(retried, returned);
+});
+
+test("2명·3명·4명 방 모두 하나의 경기로 시작할 수 있다", () => {
+  for (const participantCount of [2, 3, 4]) {
+    const store = new RoomStore();
+    const room = store.createRoom("user-1");
+    const userIds = Array.from(
+      { length: participantCount },
+      (_, index) => `user-${index + 1}`,
+    );
+    for (const userId of userIds.slice(1)) store.joinRoom(room.id, userId);
+    store.selectBeatmap(room.id, "user-1", "1");
+    for (const userId of userIds) {
+      store.setReady(room.id, userId, "1", true);
+      store.markAudioPrepared(room.id, userId, "1");
+    }
+
+    store.beginStart(room.id, "user-1");
+    const started = store.completeStart(room.id, {
+      gameSessionId: `game-${participantCount}`,
+      beatmapId: "1",
+      startAtServerMs: 1_000_000,
+      resultDeadlineAtServerMs: 1_070_000,
+      players: userIds.map((userId, index) => ({
+        userId,
+        gamePlayerId: `player-${index + 1}`,
+        score: 0,
+        combo: 0,
+        resultStatus: "playing",
+      })),
+      results: null,
+    });
+
+    assert.equal(started.currentGame?.players.length, participantCount);
+    assert.equal(new Set(started.currentGame?.players.map(({ gamePlayerId }) => gamePlayerId)).size, participantCount);
+  }
+});
+
+test("진행 중인 본인 점수와 콤보만 단조롭게 갱신한다", () => {
+  const store = new RoomStore();
+  const room = store.createRoom("host");
+  store.joinRoom(room.id, "guest");
+  store.selectBeatmap(room.id, "host", "1");
+  for (const userId of ["host", "guest"]) {
+    store.setReady(room.id, userId, "1", true);
+    store.markAudioPrepared(room.id, userId, "1");
+  }
+  store.beginStart(room.id, "host");
+  store.completeStart(room.id, {
+    gameSessionId: "10",
+    beatmapId: "1",
+    startAtServerMs: 1_000_000,
+    resultDeadlineAtServerMs: 1_070_000,
+    players: [
+      { userId: "host", gamePlayerId: "20", score: 0, combo: 0, resultStatus: "playing" },
+      { userId: "guest", gamePlayerId: "21", score: 0, combo: 0, resultStatus: "playing" },
+    ],
+    results: null,
+  });
+
+  const updated = store.updateGameProgress(room.id, "guest", "10", 1_000, 1);
+  assert.deepEqual(
+    updated.currentGame?.players.find(({ userId }) => userId === "guest"),
+    { userId: "guest", gamePlayerId: "21", score: 1_000, combo: 1, resultStatus: "playing" },
+  );
+  assert.throws(
+    () => store.updateGameProgress(room.id, "guest", "10", 500, 2),
+    InvalidGameProgressError,
+  );
 });

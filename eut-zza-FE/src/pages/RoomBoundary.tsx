@@ -11,7 +11,12 @@ import {
 } from "react-router";
 import type { User } from "../api/auth-api";
 import { getWebSocketUrl, HttpError } from "../api/http";
-import { getRoom, leaveRoom, type Room } from "../api/room-api";
+import {
+  getRoom,
+  leaveRoom,
+  type Room,
+  type RoomGamePlayer,
+} from "../api/room-api";
 import { AudioManager } from "../game/AudioManager";
 import { roomQueryKey, roomsQueryKey } from "../query/query-keys";
 import styles from "./RoomBoundary.module.css";
@@ -26,6 +31,7 @@ export type RoomContext = {
     audioUrl: string,
   ) => Promise<AudioManager>;
   getPreparedAudioManager: (beatmapId: string) => AudioManager | null;
+  sendRoomMessage: (message: unknown) => boolean;
 };
 
 type PreparedAudio = {
@@ -46,6 +52,7 @@ export const RoomBoundary = () => {
   const [clockSynchronized, setClockSynchronized] = useState(false);
   const isLeaving = useRef(false);
   const preparedAudioRef = useRef<PreparedAudio | null>(null);
+  const socketRef = useRef<WebSocket | null>(null);
   const roomQuery = useQuery({
     queryKey: roomQueryKey(roomId),
     queryFn: () => getRoom(roomId),
@@ -90,6 +97,13 @@ export const RoomBoundary = () => {
       : null;
   }, []);
 
+  const sendRoomMessage = useCallback((message: unknown): boolean => {
+    const socket = socketRef.current;
+    if (socket?.readyState !== WebSocket.OPEN) return false;
+    socket.send(JSON.stringify(message));
+    return true;
+  }, []);
+
   // 같은 방의 하위 화면 이동은 참가 유지. 뒤로가기·Link 등 SPA 이탈만 차단해 퇴장 요청을 기다린다.
   const blocker = useBlocker(({ currentLocation, nextLocation }) =>
     (currentLocation.pathname === roomPath || currentLocation.pathname.startsWith(`${roomPath}/`)) &&
@@ -130,8 +144,10 @@ export const RoomBoundary = () => {
 
     const connect = () => {
       if (disposed) return;
-      socket = new WebSocket(getWebSocketUrl(`/ws/rooms/${roomId}`));
-      socket.addEventListener("open", () => {
+      const nextSocket = new WebSocket(getWebSocketUrl(`/ws/rooms/${roomId}`));
+      socket = nextSocket;
+      socketRef.current = nextSocket;
+      nextSocket.addEventListener("open", () => {
         // 연결이 끊긴 동안 놓친 방 변경을 서버의 최신 상태로 보정한다.
         // 첫 연결에도 실행해 최초 HTTP 조회와 소켓 연결 사이의 틈을 메운다.
         void queryClient.invalidateQueries({ queryKey: roomQueryKey(roomId), exact: true });
@@ -142,16 +158,21 @@ export const RoomBoundary = () => {
         setClockSynchronized(false);
         clearTimeSyncTimers();
         timeSyncTimers = [0, 150, 300].map((delayMs) => window.setTimeout(() => {
-          if (socket?.readyState === WebSocket.OPEN) {
-            socket.send(JSON.stringify({ type: "time_sync", clientSentAtMs: Date.now() }));
+          if (nextSocket.readyState === WebSocket.OPEN) {
+            nextSocket.send(JSON.stringify({ type: "time_sync", clientSentAtMs: Date.now() }));
           }
         }, delayMs));
       });
-      socket.addEventListener("message", (event: MessageEvent<string>) => {
+      nextSocket.addEventListener("message", (event: MessageEvent<string>) => {
         try {
           const message = JSON.parse(event.data) as
             | { type: "room_updated"; room: Room }
             | { type: "room_deleted"; roomId: string }
+            | {
+                type: "game_progress";
+                gameSessionId: string;
+                player: RoomGamePlayer;
+              }
             | { type: "time_sync"; clientSentAtMs: number; serverTimeMs: number };
           if (message.type === "room_updated" && message.room.id === roomId) {
             queryClient.setQueryData(roomQueryKey(roomId), message.room);
@@ -159,6 +180,25 @@ export const RoomBoundary = () => {
           } else if (message.type === "room_deleted" && message.roomId === roomId) {
             void queryClient.invalidateQueries({ queryKey: roomsQueryKey, exact: true });
             void navigate("/multiplayer/rooms", { replace: true });
+          } else if (message.type === "game_progress") {
+            queryClient.setQueryData<Room>(roomQueryKey(roomId), (currentRoom) => {
+              if (
+                currentRoom?.currentGame?.gameSessionId !== message.gameSessionId
+              ) {
+                return currentRoom;
+              }
+
+              return {
+                ...currentRoom,
+                currentGame: {
+                  ...currentRoom.currentGame,
+                  players: currentRoom.currentGame.players.map((player) =>
+                    player.gamePlayerId === message.player.gamePlayerId
+                      ? message.player
+                      : player),
+                },
+              };
+            });
           } else if (message.type === "time_sync") {
             const clientReceivedAtMs = Date.now();
             const roundTripMs = clientReceivedAtMs - message.clientSentAtMs;
@@ -173,9 +213,10 @@ export const RoomBoundary = () => {
           }
         } catch { /* 다른 형식의 메시지는 무시한다. */ }
       });
-      socket.addEventListener("close", () => {
+      nextSocket.addEventListener("close", () => {
         clearTimeSyncTimers();
-        if (!disposed) {
+        if (socketRef.current === nextSocket) socketRef.current = null;
+        if (!disposed && socket === nextSocket) {
           setClockSynchronized(false);
           reconnectTimer = window.setTimeout(connect, 1_000);
         }
@@ -187,16 +228,21 @@ export const RoomBoundary = () => {
       clearTimeSyncTimers();
       if (reconnectTimer !== undefined) window.clearTimeout(reconnectTimer);
       socket?.close();
+      socketRef.current = null;
     };
   }, [roomId, isRoomLoaded, queryClient, navigate]);
 
   useEffect(() => {
-    if (
-      roomQuery.data?.status === "playing" &&
-      roomQuery.data.currentGame !== null &&
-      location.pathname !== `${roomPath}/play`
-    ) {
-      void navigate(`${roomPath}/play`, { replace: true });
+    if (roomQuery.data?.currentGame != null) {
+      const targetPath = roomQuery.data?.status === "finished"
+        ? `${roomPath}/results/${roomQuery.data.currentGame.gameSessionId}`
+        : roomQuery.data?.status === "playing"
+          ? `${roomPath}/play`
+          : null;
+
+      if (targetPath !== null && location.pathname !== targetPath) {
+        void navigate(targetPath, { replace: true });
+      }
     }
   }, [location.pathname, navigate, roomPath, roomQuery.data]);
 
@@ -222,6 +268,7 @@ export const RoomBoundary = () => {
           clockSynchronized,
           prepareAudio,
           getPreparedAudioManager,
+          sendRoomMessage,
         } satisfies RoomContext}
       />
     </>

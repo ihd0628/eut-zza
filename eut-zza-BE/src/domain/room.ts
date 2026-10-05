@@ -1,6 +1,11 @@
 export const ROOM_CAPACITY = 4;
 
-export type RoomStatus = "waiting" | "starting" | "playing";
+import type {
+  MultiplayerResultEntry,
+  MultiplayerResultStatus,
+} from "./game-session.js";
+
+export type RoomStatus = "waiting" | "starting" | "playing" | "finished";
 
 export type RoomParticipant = {
   userId: string;
@@ -12,13 +17,18 @@ export type RoomParticipant = {
 export type RoomGamePlayer = {
   userId: string;
   gamePlayerId: string;
+  score: number;
+  combo: number;
+  resultStatus: MultiplayerResultStatus;
 };
 
 export type RoomGame = {
   gameSessionId: string;
   beatmapId: string;
   startAtServerMs: number;
+  resultDeadlineAtServerMs: number;
   players: RoomGamePlayer[];
+  results: MultiplayerResultEntry[] | null;
 };
 
 export type Room = {
@@ -26,6 +36,7 @@ export type Room = {
   hostUserId: string;
   status: RoomStatus;
   selectedBeatmapId: string | null;
+  lastCompletedGameSessionId: string | null;
   participants: RoomParticipant[];
   currentGame: RoomGame | null;
   createdAt: string;
@@ -119,5 +130,33 @@ export class RoomAudioNotPreparedError extends Error {
   constructor() {
     super("All participants must prepare the selected audio");
     this.name = "RoomAudioNotPreparedError";
+  }
+}
+
+export class RoomGameNotPlayingError extends Error {
+  constructor() {
+    super("Room game is not playing");
+    this.name = "RoomGameNotPlayingError";
+  }
+}
+
+export class RoomGameNotFinishedError extends Error {
+  constructor() {
+    super("The completed room game is no longer available");
+    this.name = "RoomGameNotFinishedError";
+  }
+}
+
+export class RoomGamePlayerNotFoundError extends Error {
+  constructor() {
+    super("Player is not part of the current room game");
+    this.name = "RoomGamePlayerNotFoundError";
+  }
+}
+
+export class InvalidGameProgressError extends Error {
+  constructor() {
+    super("Invalid game progress");
+    this.name = "InvalidGameProgressError";
   }
 }

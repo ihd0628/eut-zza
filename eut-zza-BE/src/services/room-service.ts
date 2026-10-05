@@ -1,10 +1,14 @@
 import { randomUUID } from "node:crypto";
 import {
+  InvalidGameProgressError,
   ROOM_CAPACITY,
   RoomAudioNotPreparedError,
   RoomBeatmapChangedError,
   RoomBeatmapNotSelectedError,
   RoomFullError,
+  RoomGameNotFinishedError,
+  RoomGameNotPlayingError,
+  RoomGamePlayerNotFoundError,
   RoomHostRequiredError,
   RoomNotEnoughParticipantsError,
   RoomNotFoundError,
@@ -17,6 +21,7 @@ import {
   type Room,
   type RoomGame,
 } from "../domain/room.js";
+import type { MultiplayerResultState } from "../domain/game-session.js";
 
 // 내부 배열을 호출자에게 직접 넘기면 서버의 정원 규칙을 우회해 변경할 수 있다.
 const snapshotRoom = (room: Room): Room => ({
@@ -27,6 +32,7 @@ const snapshotRoom = (room: Room): Room => ({
     : {
         ...room.currentGame,
         players: room.currentGame.players.map((player) => ({ ...player })),
+        results: room.currentGame.results?.map((result) => ({ ...result })) ?? null,
       },
 });
 
@@ -53,6 +59,16 @@ export class RoomStore {
     return undefined;
   }
 
+  findRoomByGameSessionId(gameSessionId: string): Room | undefined {
+    for (const room of this.rooms.values()) {
+      if (room.currentGame?.gameSessionId === gameSessionId) {
+        return snapshotRoom(room);
+      }
+    }
+
+    return undefined;
+  }
+
   createRoom(userId: string): Room {
     this.ensureUserIsNotInAnotherRoom(userId);
 
@@ -62,6 +78,7 @@ export class RoomStore {
       hostUserId: userId,
       status: "waiting",
       selectedBeatmapId: null,
+      lastCompletedGameSessionId: null,
       participants: [{
         userId,
         joinedAt: createdAt,
@@ -199,6 +216,101 @@ export class RoomStore {
       ...game,
       players: game.players.map((player) => ({ ...player })),
     };
+    return snapshotRoom(room);
+  }
+
+  updateGameProgress(
+    roomId: string,
+    userId: string,
+    gameSessionId: string,
+    score: number,
+    combo: number,
+  ): Room {
+    const room = this.rooms.get(roomId);
+    if (
+      room === undefined ||
+      room.status !== "playing" ||
+      room.currentGame?.gameSessionId !== gameSessionId
+    ) {
+      throw new RoomGameNotPlayingError();
+    }
+
+    const player = room.currentGame.players.find((entry) => entry.userId === userId);
+    if (player === undefined) throw new RoomGamePlayerNotFoundError();
+    if (
+      player.resultStatus !== "playing" ||
+      !Number.isSafeInteger(score) ||
+      !Number.isSafeInteger(combo) ||
+      score < player.score ||
+      combo < 0
+    ) {
+      throw new InvalidGameProgressError();
+    }
+
+    player.score = score;
+    player.combo = combo;
+    return snapshotRoom(room);
+  }
+
+  applyMultiplayerResultState(
+    roomId: string,
+    resultState: MultiplayerResultState,
+  ): Room {
+    const room = this.rooms.get(roomId);
+    if (
+      room === undefined ||
+      room.currentGame?.gameSessionId !== resultState.gameSessionId
+    ) {
+      throw new RoomNotFoundError();
+    }
+
+    for (const result of resultState.players) {
+      const player = room.currentGame.players.find(
+        (entry) => entry.gamePlayerId === result.gamePlayerId,
+      );
+      if (player !== undefined) {
+        player.resultStatus = result.resultStatus;
+        if (result.score !== null) player.score = result.score;
+        player.combo = 0;
+      }
+    }
+
+    if (resultState.status === "completed") {
+      room.status = "finished";
+      room.lastCompletedGameSessionId = resultState.gameSessionId;
+      room.currentGame.results = resultState.players.map((result) => ({ ...result }));
+    }
+
+    return snapshotRoom(room);
+  }
+
+  returnToLobby(
+    roomId: string,
+    userId: string,
+    gameSessionId: string,
+  ): Room {
+    const room = this.rooms.get(roomId);
+    if (room === undefined) throw new RoomNotFoundError();
+    if (!room.participants.some((participant) => participant.userId === userId)) {
+      throw new RoomParticipantNotFoundError();
+    }
+    if (room.lastCompletedGameSessionId !== gameSessionId) {
+      throw new RoomGameNotFinishedError();
+    }
+
+    // 첫 참가자가 복귀할 때 방을 다음 경기의 대기 상태로 전환한다.
+    // 다른 참가자가 같은 결과 화면에서 나중에 눌러도 동일 요청으로 처리한다.
+    if (room.status === "finished") {
+      room.status = "waiting";
+      room.currentGame = null;
+      for (const participant of room.participants) {
+        participant.isReady = false;
+        participant.preparedBeatmapId = null;
+      }
+    } else if (room.status !== "waiting" || room.currentGame !== null) {
+      throw new RoomGameNotFinishedError();
+    }
+
     return snapshotRoom(room);
   }
 
