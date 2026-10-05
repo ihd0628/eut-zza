@@ -3,6 +3,7 @@ import type { Room } from "../domain/room.js";
 import { RoomStore } from "./room-service.js";
 
 export const ROOM_RECONNECT_GRACE_MS = 10_000;
+export const ROOM_HEARTBEAT_INTERVAL_MS = 30_000;
 
 type RoomEvent =
   | { type: "room_updated"; room: Room }
@@ -13,11 +14,35 @@ type RoomEvent =
 export class RoomPresence {
   private readonly connections = new Map<string, Map<string, Set<WebSocket>>>();
   private readonly departureTimers = new Map<string, NodeJS.Timeout>();
+  private readonly awaitingPong = new WeakSet<WebSocket>();
+  private readonly heartbeatTimer: NodeJS.Timeout;
 
   constructor(
     private readonly roomStore: RoomStore,
     private readonly graceMs = ROOM_RECONNECT_GRACE_MS,
-  ) {}
+    heartbeatMs = ROOM_HEARTBEAT_INTERVAL_MS,
+  ) {
+    this.heartbeatTimer = setInterval(() => this.checkConnections(), heartbeatMs);
+    this.heartbeatTimer.unref();
+  }
+
+  private checkConnections(): void {
+    for (const roomConnections of this.connections.values()) {
+      for (const userConnections of roomConnections.values()) {
+        for (const socket of userConnections) {
+          // 직전 Ping에 Pong이 없으면 끊어진 연결로 보고 즉시 종료한다.
+          // close 이벤트가 발생하면 기존의 10초 재접속 유예가 시작된다.
+          if (socket.readyState !== socket.OPEN || this.awaitingPong.has(socket)) {
+            socket.terminate();
+            continue;
+          }
+
+          this.awaitingPong.add(socket);
+          socket.ping();
+        }
+      }
+    }
+  }
 
   private timerKey(roomId: string, userId: string): string {
     return `${roomId}:${userId}`;
@@ -74,7 +99,10 @@ export class RoomPresence {
     }
 
     userConnections.add(socket);
+    // 브라우저는 WebSocket 프로토콜의 Ping에 자동으로 Pong을 보낸다.
+    socket.on("pong", () => this.awaitingPong.delete(socket));
     socket.on("close", () => {
+      this.awaitingPong.delete(socket);
       const currentConnections = this.connections.get(roomId)?.get(userId);
       currentConnections?.delete(socket);
 
@@ -137,6 +165,7 @@ export class RoomPresence {
   }
 
   dispose(): void {
+    clearInterval(this.heartbeatTimer);
     for (const timer of this.departureTimers.values()) {
       clearTimeout(timer);
     }
