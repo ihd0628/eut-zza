@@ -1,0 +1,42 @@
+.container {
+  display: grid;
+  gap: 12px;
+  max-width: 760px;
+  margin: 20px auto;
+}
+
+.eyebrow {
+  color: var(--accent);
+  font-weight: 800;
+  letter-spacing: .15em;
+}
+
+.container h1,
+.container h2 {
+  color: var(--text-h);
+}
+
+.actionButton {
+  width: fit-content;
+  padding: 10px 16px;
+  border: 1px solid var(--accent-border);
+  border-radius: 8px;
+  background: var(--accent);
+  color: white;
+  cursor: pointer;
+}
+
+.actionButton:disabled {
+  cursor: wait;
+  opacity: .6;
+}
+
+.result {
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.error {
+  color: #dc2626;
+}

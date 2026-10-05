@@ -1,43 +1,121 @@
+import { useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useOutletContext } from "react-router";
-import { selectRoomBeatmap, setRoomReady } from "../api/room-api";
+import {
+  markRoomAudioPrepared,
+  selectRoomBeatmap,
+  setRoomReady,
+  startRoomGame,
+} from "../api/room-api";
 import { getSongs } from "../api/song-api";
 import { roomQueryKey, songsQueryKey } from "../query/query-keys";
 import type { RoomContext } from "./RoomBoundary";
 import styles from "./RoomLobbyPage.module.css";
 
 export const RoomLobbyPage = () => {
-  const { room, user } = useOutletContext<RoomContext>();
+  const {
+    room,
+    user,
+    prepareAudio,
+    getPreparedAudioManager,
+  } = useOutletContext<RoomContext>();
   const queryClient = useQueryClient();
   const isHost = room.hostUserId === user.id;
   const me = room.participants.find((participant) => participant.userId === user.id);
   const allReady = room.participants.length > 0 && room.participants.every((participant) => participant.isReady);
-  const canStart = room.selectedBeatmapId !== null && room.participants.length >= 2 && allReady;
   const songsQuery = useQuery({ queryKey: songsQueryKey, queryFn: getSongs });
-  const selectionMutation = useMutation({
-    mutationFn: (beatmapId: string) => selectRoomBeatmap(room.id, beatmapId),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: roomQueryKey(room.id), exact: true });
-    },
-  });
-  const readyMutation = useMutation({
-    mutationFn: ({ beatmapId, ready }: { beatmapId: string; ready: boolean }) =>
-      setRoomReady(room.id, beatmapId, ready),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: roomQueryKey(room.id), exact: true });
-    },
-  });
   const selectedSong = songsQuery.data?.find((song) =>
     song.beatmaps.some((beatmap) => beatmap.id === room.selectedBeatmapId));
   const selectedBeatmap = selectedSong?.beatmaps.find((beatmap) =>
     beatmap.id === room.selectedBeatmapId);
+  const allAudioPrepared = room.selectedBeatmapId !== null && room.participants.every(
+    (participant) => participant.preparedBeatmapId === room.selectedBeatmapId,
+  );
+  const canStart = room.selectedBeatmapId !== null &&
+    room.participants.length >= 2 &&
+    allReady &&
+    allAudioPrepared;
+  const selectionMutation = useMutation({
+    mutationFn: (beatmapId: string) => selectRoomBeatmap(room.id, beatmapId),
+    onSuccess: (updatedRoom) => {
+      queryClient.setQueryData(roomQueryKey(room.id), updatedRoom);
+    },
+  });
+  const readyMutation = useMutation({
+    mutationFn: ({ beatmapId, ready }: {
+      beatmapId: string;
+      ready: boolean;
+    }) => setRoomReady(room.id, beatmapId, ready),
+    onSuccess: (updatedRoom) => {
+      queryClient.setQueryData(roomQueryKey(room.id), updatedRoom);
+    },
+  });
+  const audioPreparationMutation = useMutation({
+    mutationFn: async ({ beatmapId, audioUrl }: { beatmapId: string; audioUrl: string }) => {
+      await prepareAudio(beatmapId, audioUrl);
+      return markRoomAudioPrepared(room.id, beatmapId);
+    },
+    onSuccess: (updatedRoom) => {
+      queryClient.setQueryData(roomQueryKey(room.id), updatedRoom);
+    },
+  });
+  const startMutation = useMutation({
+    mutationFn: () => startRoomGame(room.id),
+    onSuccess: (updatedRoom) => {
+      queryClient.setQueryData(roomQueryKey(room.id), updatedRoom);
+    },
+  });
+  const prepareRoomAudio = audioPreparationMutation.mutate;
+  const isAudioPreparing = audioPreparationMutation.isPending;
+  const myPreparedBeatmapId = me?.preparedBeatmapId ?? null;
+  const amIReady = me?.isReady === true;
+
+  useEffect(() => {
+    if (
+      !amIReady ||
+      room.selectedBeatmapId === null ||
+      selectedSong === undefined ||
+      myPreparedBeatmapId === room.selectedBeatmapId ||
+      isAudioPreparing
+    ) {
+      return;
+    }
+
+    const hasReusableAudioContext =
+      getPreparedAudioManager(room.selectedBeatmapId) !== null ||
+      (myPreparedBeatmapId !== null &&
+        getPreparedAudioManager(myPreparedBeatmapId) !== null);
+
+    if (hasReusableAudioContext) {
+      prepareRoomAudio({
+        beatmapId: room.selectedBeatmapId,
+        audioUrl: selectedSong.audioUrl,
+      });
+    }
+  }, [
+    amIReady,
+    getPreparedAudioManager,
+    isAudioPreparing,
+    myPreparedBeatmapId,
+    prepareRoomAudio,
+    room.selectedBeatmapId,
+    selectedSong,
+  ]);
 
   return (
     <section className={styles.container} aria-labelledby="room-title">
       <nav><Link to="/multiplayer/rooms">← 방 나가기</Link></nav>
       <p className={styles.eyebrow}>MULTIPLAYER ROOM</p>
       <h1 id="room-title">방 #{room.id.slice(0, 8)}</h1>
-      <p>참가 인원 {room.participants.length}/4명 · {room.status === "waiting" ? "대기 중" : "진행 중"}</p>
+      <p>
+        참가 인원 {room.participants.length}/4명{" · "}{
+          room.status === "waiting"
+            ? "대기 중"
+            : room.status === "starting"
+              ? "경기 생성 중"
+              : "진행 중"
+        }
+      </p>
 
       <section className={styles.selection} aria-labelledby="selection-title">
         <h2 id="selection-title">곡·난이도</h2>
@@ -85,30 +163,98 @@ export const RoomLobbyPage = () => {
               <strong>{participant.userId === user.id ? "나" : `플레이어 ${participant.userId}`}</strong>
               {participant.userId === room.hostUserId ? <span className={styles.host}>방장</span> : null}
               <span>{participant.isReady ? "준비 완료" : "준비 전"}</span>
+              <span>
+                {room.selectedBeatmapId !== null &&
+                participant.preparedBeatmapId === room.selectedBeatmapId
+                  ? "음원 준비 완료"
+                  : "음원 준비 전"}
+              </span>
             </li>
           ))}
         </ol>
         <button
           className={styles.readyButton}
           type="button"
-          disabled={room.status !== "waiting" || room.selectedBeatmapId === null || me === undefined || readyMutation.isPending || selectionMutation.isPending}
+          disabled={
+            room.status !== "waiting" ||
+            room.selectedBeatmapId === null ||
+            selectedSong === undefined ||
+            me === undefined ||
+            readyMutation.isPending ||
+            audioPreparationMutation.isPending ||
+            selectionMutation.isPending
+          }
           onClick={() => {
-            if (room.selectedBeatmapId !== null && me !== undefined) {
-              readyMutation.mutate({ beatmapId: room.selectedBeatmapId, ready: !me.isReady });
+            if (
+              room.selectedBeatmapId !== null &&
+              selectedSong !== undefined &&
+              me !== undefined
+            ) {
+              if (me.isReady) {
+                readyMutation.mutate({
+                  beatmapId: room.selectedBeatmapId,
+                  ready: false,
+                });
+                return;
+              }
+
+              const beatmapId = room.selectedBeatmapId;
+              void audioPreparationMutation.mutateAsync({
+                beatmapId,
+                audioUrl: selectedSong.audioUrl,
+              })
+                .then(() => readyMutation.mutate({ beatmapId, ready: true }))
+                .catch(() => { /* Mutation의 error 상태를 화면에 표시한다. */ });
             }
           }}
         >
-          {readyMutation.isPending ? "처리 중..." : me?.isReady ? "준비 취소" : "준비 완료"}
+          {audioPreparationMutation.isPending
+            ? "음원 준비 중..."
+            : readyMutation.isPending
+              ? "처리 중..."
+              : me?.isReady
+                ? "준비 취소"
+                : "음원 준비 후 준비 완료"}
         </button>
+        {me?.isReady === true &&
+        room.selectedBeatmapId !== null &&
+        me.preparedBeatmapId !== room.selectedBeatmapId &&
+        selectedSong !== undefined ? (
+          <button
+            className={styles.readyButton}
+            type="button"
+            disabled={audioPreparationMutation.isPending}
+            onClick={() => audioPreparationMutation.mutate({
+              beatmapId: room.selectedBeatmapId!,
+              audioUrl: selectedSong.audioUrl,
+            })}
+          >
+            음원 다시 준비
+          </button>
+        ) : null}
         {readyMutation.isError ? <p className={styles.error} role="alert">{readyMutation.error.message}</p> : null}
+        {audioPreparationMutation.isError ? <p className={styles.error} role="alert">{audioPreparationMutation.error.message}</p> : null}
+        {isHost ? (
+          <button
+            className={styles.startButton}
+            type="button"
+            disabled={!canStart || startMutation.isPending}
+            onClick={() => startMutation.mutate()}
+          >
+            {startMutation.isPending ? "경기 생성 중..." : "멀티플레이 시작"}
+          </button>
+        ) : null}
+        {startMutation.isError ? <p className={styles.error} role="alert">{startMutation.error.message}</p> : null}
         <p className={styles.note}>
           {canStart
-            ? "전원이 준비했습니다. 게임 시작 기능은 다음 단계에서 연결합니다."
+            ? "전원의 준비가 끝났습니다. 방장이 게임을 시작할 수 있습니다."
             : room.selectedBeatmapId === null
               ? "방장이 채보를 선택하면 준비할 수 있습니다."
               : room.participants.length < 2
                 ? "시작하려면 참가자가 최소 2명 필요합니다."
-                : "모든 참가자가 준비하면 시작할 수 있습니다."}
+                : !allReady
+                  ? "모든 참가자가 준비하면 시작할 수 있습니다."
+                  : "모든 참가자의 음원 다운로드와 디코딩을 기다리고 있습니다."}
         </p>
       </section>
       <p className={styles.note}>새로고침 후에도 같은 방으로 돌아옵니다. 화면을 벗어나면 퇴장합니다.</p>

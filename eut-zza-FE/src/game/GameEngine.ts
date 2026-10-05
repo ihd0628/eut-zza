@@ -75,8 +75,9 @@ export class GameEngine {
     notes: Note[],
     audioUrl: string,
     onComplete: GameCompleteCallback,
+    audioManager = new AudioManager(),
   ) {
-    this.audioManager = new AudioManager();
+    this.audioManager = audioManager;
     this.renderer = new CanvasRenderer(canvas);
     this.noteRenderLookaheadMs = this.renderer.getNoteRenderLookaheadMs();
     this.audioUrl = audioUrl;
@@ -111,9 +112,9 @@ export class GameEngine {
     await this.audioManager.prepare(this.audioUrl);
   }
 
-  start(): void {
+  start(delayMs = 0): void {
     // 서버의 경기 생성과 음원 준비가 모두 끝난 뒤 실제 음악을 시작한다.
-    this.audioManager.play();
+    this.audioManager.play(delayMs);
 
     // 음악과 같은 시점부터 입력과 화면 갱신을 시작한다.
     this.inputManager.attach();

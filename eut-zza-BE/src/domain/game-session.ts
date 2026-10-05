@@ -27,6 +27,12 @@ export type StartedSoloGame = {
   gamePlayer: GamePlayer;
 };
 
+export type StartedMultiplayerGame = {
+  gameSession: GameSession;
+  gamePlayers: GamePlayer[];
+  startAtServerMs: number;
+};
+
 export type CompleteSoloGameInput = CreateScoreInput & {
   gameSessionId: string;
 };

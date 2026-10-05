@@ -1,11 +1,24 @@
 export const ROOM_CAPACITY = 4;
 
-export type RoomStatus = "waiting" | "playing";
+export type RoomStatus = "waiting" | "starting" | "playing";
 
 export type RoomParticipant = {
   userId: string;
   joinedAt: string;
   isReady: boolean;
+  preparedBeatmapId: string | null;
+};
+
+export type RoomGamePlayer = {
+  userId: string;
+  gamePlayerId: string;
+};
+
+export type RoomGame = {
+  gameSessionId: string;
+  beatmapId: string;
+  startAtServerMs: number;
+  players: RoomGamePlayer[];
 };
 
 export type Room = {
@@ -14,6 +27,7 @@ export type Room = {
   status: RoomStatus;
   selectedBeatmapId: string | null;
   participants: RoomParticipant[];
+  currentGame: RoomGame | null;
   createdAt: string;
 };
 
@@ -84,5 +98,26 @@ export class RoomNotWaitingError extends Error {
   constructor() {
     super("Room is not waiting for players");
     this.name = "RoomNotWaitingError";
+  }
+}
+
+export class RoomNotEnoughParticipantsError extends Error {
+  constructor() {
+    super("At least two participants are required to start");
+    this.name = "RoomNotEnoughParticipantsError";
+  }
+}
+
+export class RoomParticipantsNotReadyError extends Error {
+  constructor() {
+    super("All participants must be ready");
+    this.name = "RoomParticipantsNotReadyError";
+  }
+}
+
+export class RoomAudioNotPreparedError extends Error {
+  constructor() {
+    super("All participants must prepare the selected audio");
+    this.name = "RoomAudioNotPreparedError";
   }
 }

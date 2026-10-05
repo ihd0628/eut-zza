@@ -52,7 +52,13 @@ export const RoomListPage = () => {
           <li key={room.id} className={styles.room}>
             <div>
               <strong>방 #{room.id.slice(0, 8)}</strong>
-              <p>{room.status === "waiting" ? "대기 중" : "진행 중"} · {room.participants.length}/4명</p>
+              <p>
+                {room.status === "waiting"
+                  ? "대기 중"
+                  : room.status === "starting"
+                    ? "시작 중"
+                    : "진행 중"} · {room.participants.length}/4명
+              </p>
             </div>
             {myRoom?.id === room.id ? (
               <Link to={`/multiplayer/rooms/${room.id}`}>돌아가기</Link>

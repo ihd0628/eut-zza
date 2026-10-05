@@ -1,12 +1,24 @@
 import { requestJson } from "./http";
 
-export type RoomParticipant = { userId: string; joinedAt: string; isReady: boolean };
+export type RoomParticipant = {
+  userId: string;
+  joinedAt: string;
+  isReady: boolean;
+  preparedBeatmapId: string | null;
+};
+export type RoomGame = {
+  gameSessionId: string;
+  beatmapId: string;
+  startAtServerMs: number;
+  players: { userId: string; gamePlayerId: string }[];
+};
 export type Room = {
   id: string;
   hostUserId: string;
-  status: "waiting" | "playing";
+  status: "waiting" | "starting" | "playing";
   selectedBeatmapId: string | null;
   participants: RoomParticipant[];
+  currentGame: RoomGame | null;
   createdAt: string;
 };
 
@@ -41,4 +53,19 @@ export const setRoomReady = async (
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ beatmapId, ready }),
+  })).room;
+
+export const markRoomAudioPrepared = async (
+  roomId: string,
+  beatmapId: string,
+): Promise<Room> =>
+  (await requestJson<{ room: Room }>(`/rooms/${roomId}/audio-prepared`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ beatmapId }),
+  })).room;
+
+export const startRoomGame = async (roomId: string): Promise<Room> =>
+  (await requestJson<{ room: Room }>(`/rooms/${roomId}/start`, {
+    method: "POST",
   })).room;

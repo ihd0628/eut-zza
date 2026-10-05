@@ -11,6 +11,7 @@ export class AudioManager {
   private startedAtSeconds: number | null = null;
 
   private audioBuffer: AudioBuffer | null = null;
+  private preparedAudioUrl: string | null = null;
   private sourceNode: AudioBufferSourceNode | null = null;
 
   constructor() {
@@ -21,11 +22,20 @@ export class AudioManager {
     // 사용자 클릭 흐름 안에서 가장 먼저 resume()을 요청한다.
     await this.audioContext.resume();
 
+    if (this.audioBuffer !== null && this.preparedAudioUrl === audioUrl) {
+      return;
+    }
+
+    if (this.startedAtSeconds !== null) {
+      throw new Error("재생 중에는 다른 음원을 준비할 수 없습니다.");
+    }
+
     // 재생은 아직 시작하지 않고 실제 음원만 내려받아 디코딩한다.
     await this.load(audioUrl);
+    this.preparedAudioUrl = audioUrl;
   }
 
-  play(): void {
+  play(delayMs = 0): void {
     if (this.audioBuffer === null) {
       throw new Error("재생할 AudioBuffer가 없습니다.");
     }
@@ -42,10 +52,20 @@ export class AudioManager {
     // 음원 재생 노드를 스피커 출력에 연결한다.
     sourceNode.connect(this.audioContext.destination);
 
-    // 음원이 시작하는 AudioContext의 절대 시각을 저장한다.
-    const startedAtSeconds = this.audioContext.currentTime;
+    // 서버의 공통 시작 시각까지 남은 시간을 AudioContext 시각으로 옮긴다.
+    // 이미 시작 시각이 지났다면 지난 만큼 음원을 건너뛰어 같은 구간에 합류한다.
+    const requestedStartAtSeconds = this.audioContext.currentTime + delayMs / 1_000;
+    const playbackStartAtSeconds = Math.max(
+      this.audioContext.currentTime,
+      requestedStartAtSeconds,
+    );
+    const offsetSeconds = Math.max(0, -delayMs / 1_000);
 
-    this.startedAtSeconds = startedAtSeconds;
+    if (offsetSeconds >= this.audioBuffer.duration) {
+      throw new Error("경기 시작 시각이 이미 음원 재생 시간을 지났습니다.");
+    }
+
+    this.startedAtSeconds = requestedStartAtSeconds;
     this.sourceNode = sourceNode;
 
     sourceNode.onended = () => {
@@ -57,7 +77,7 @@ export class AudioManager {
     };
 
     // 음악과 게임 시간이 정확히 같은 시점에서 시작된다.
-    sourceNode.start(startedAtSeconds);
+    sourceNode.start(playbackStartAtSeconds, offsetSeconds);
   }
 
   getCurrentTimeMs(): number {
@@ -73,6 +93,7 @@ export class AudioManager {
   async close(): Promise<void> {
     this.startedAtSeconds = null;
     this.audioBuffer = null;
+    this.preparedAudioUrl = null;
 
     if (this.sourceNode !== null) {
       // 아직 재생 중인 음원을 중단한다.

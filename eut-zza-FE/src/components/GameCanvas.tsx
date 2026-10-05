@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { SAMPLE_NOTES } from "../constants";
+import type { AudioManager } from "../game/AudioManager";
 import { GameEngine } from "../game/GameEngine";
 import type { GameResult } from "../game/types";
 import styles from "./GameCanvas.module.css";
@@ -19,6 +20,8 @@ type GameCanvasProps = {
   audioUrl: string;
   onCreateGame: () => Promise<void>;
   onComplete: (result: GameResult) => void;
+  audioManager?: AudioManager;
+  startAtClientMs?: number;
 };
 
 type StartStatus = "idle" | "starting" | "running" | "completed";
@@ -35,6 +38,8 @@ export const GameCanvas = ({
   audioUrl,
   onCreateGame,
   onComplete,
+  audioManager,
+  startAtClientMs,
 }: GameCanvasProps) => {
   // 첫 React render 시점에는 아직 <canvas> DOM이 생성되기 전이므로 초기값은 null이다.
   // React commit이 끝나면 React가 canvasRef.current에 실제 HTMLCanvasElement를 넣어준다.
@@ -45,7 +50,7 @@ export const GameCanvas = ({
   const [startStatus, setStartStatus] = useState<StartStatus>("idle");
   const [startError, setStartError] = useState<string | null>(null);
 
-  const handleStart = async (): Promise<void> => {
+  const handleStart = useCallback(async (): Promise<void> => {
     const canvas = canvasRef.current;
 
     // Canvas가 없거나 게임이 이미 시작됐다면 중복 실행하지 않는다.
@@ -75,6 +80,7 @@ export const GameCanvas = ({
         setStartStatus("completed");
         onComplete(result);
       },
+      audioManager,
     );
 
     gameEngineRef.current = gameEngine;
@@ -90,7 +96,10 @@ export const GameCanvas = ({
         return;
       }
 
-      gameEngine.start();
+      const delayMs = startAtClientMs === undefined
+        ? 0
+        : startAtClientMs - Date.now();
+      gameEngine.start(delayMs);
       setStartStatus("running");
     } catch (error: unknown) {
       if (gameEngineRef.current === gameEngine) {
@@ -105,7 +114,7 @@ export const GameCanvas = ({
         setStartError(getErrorMessage(error));
       }
     }
-  };
+  }, [audioManager, audioUrl, onComplete, onCreateGame, startAtClientMs]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -123,12 +132,23 @@ export const GameCanvas = ({
     };
   }, []);
 
+  useEffect(() => {
+    if (startAtClientMs === undefined) return;
+
+    // 개발 모드의 Effect 재실행에서도 첫 예약을 정리할 수 있게 Task로 시작한다.
+    const autoStartTimer = window.setTimeout(() => {
+      void handleStart();
+    }, 0);
+
+    return () => window.clearTimeout(autoStartTimer);
+  }, [handleStart, startAtClientMs]);
+
   return (
     <section className={styles.container}>
       <button
         className={styles.startButton}
         type="button"
-        disabled={startStatus !== "idle"}
+        disabled={startAtClientMs !== undefined || startStatus !== "idle"}
         onClick={() => {
           void handleStart();
         }}
@@ -139,6 +159,8 @@ export const GameCanvas = ({
             ? "게임 진행 중"
             : startStatus === "completed"
               ? "게임 완료"
+              : startAtClientMs !== undefined
+                ? "동기화된 시작 대기 중"
             : "게임 시작"}
       </button>
       {startError === null ? null : (

@@ -1,16 +1,20 @@
 import type { FastifyPluginAsync } from "fastify";
 import {
+  RoomAudioNotPreparedError,
   RoomBeatmapChangedError,
   RoomBeatmapNotSelectedError,
   RoomFullError,
   RoomHostRequiredError,
+  RoomNotEnoughParticipantsError,
   RoomNotFoundError,
   RoomNotJoinableError,
   RoomNotWaitingError,
   RoomParticipantNotFoundError,
+  RoomParticipantsNotReadyError,
   RoomSelectionLockedError,
   UserAlreadyInRoomError,
 } from "../domain/room.js";
+import { BeatmapNotFoundError } from "../domain/game-session.js";
 import { beatmapExists } from "../repositories/beatmap-repository.js";
 import {
   authenticateRequest,
@@ -18,6 +22,7 @@ import {
 } from "../hooks/authentication.js";
 import type { RoomStore } from "../services/room-service.js";
 import type { RoomPresence } from "../services/room-presence.js";
+import { startMultiplayerGame } from "../services/game-session-service.js";
 
 type RoomRoutesOptions = {
   roomStore: RoomStore;
@@ -242,6 +247,74 @@ export const roomRoutes: FastifyPluginAsync<RoomRoutesOptions> = async (
           error instanceof RoomNotWaitingError ||
           error instanceof RoomBeatmapNotSelectedError ||
           error instanceof RoomBeatmapChangedError
+        ) {
+          return reply.code(409).send({ error: error.message });
+        }
+        throw error;
+      }
+    },
+  );
+
+  server.patch<{ Params: RoomParams; Body: SelectBeatmapBody }>(
+    "/rooms/:id/audio-prepared",
+    {
+      preHandler: authenticateRequest,
+      schema: { params: roomParamsSchema, body: selectionBodySchema },
+    },
+    async (request, reply) => {
+      try {
+        const user = getAuthenticatedRequestUser(request);
+        const room = roomStore.markAudioPrepared(
+          request.params.id,
+          user.id,
+          request.body.beatmapId,
+        );
+        roomPresence.broadcastRoom(room.id);
+        return { room };
+      } catch (error: unknown) {
+        if (error instanceof RoomNotFoundError) {
+          return reply.code(404).send({ error: error.message });
+        }
+        if (error instanceof RoomParticipantNotFoundError) {
+          return reply.code(403).send({ error: error.message });
+        }
+        if (
+          error instanceof RoomNotWaitingError ||
+          error instanceof RoomBeatmapNotSelectedError ||
+          error instanceof RoomBeatmapChangedError
+        ) {
+          return reply.code(409).send({ error: error.message });
+        }
+        throw error;
+      }
+    },
+  );
+
+  server.post<{ Params: RoomParams }>(
+    "/rooms/:id/start",
+    {
+      preHandler: authenticateRequest,
+      schema: { params: roomParamsSchema },
+    },
+    async (request, reply) => {
+      try {
+        const user = getAuthenticatedRequestUser(request);
+        const room = await startMultiplayerGame(roomStore, request.params.id, user.id);
+        roomPresence.broadcastRoom(room.id);
+        return reply.code(201).send({ room });
+      } catch (error: unknown) {
+        if (error instanceof RoomNotFoundError || error instanceof BeatmapNotFoundError) {
+          return reply.code(404).send({ error: error.message });
+        }
+        if (error instanceof RoomHostRequiredError) {
+          return reply.code(403).send({ error: error.message });
+        }
+        if (
+          error instanceof RoomNotWaitingError ||
+          error instanceof RoomBeatmapNotSelectedError ||
+          error instanceof RoomNotEnoughParticipantsError ||
+          error instanceof RoomParticipantsNotReadyError ||
+          error instanceof RoomAudioNotPreparedError
         ) {
           return reply.code(409).send({ error: error.message });
         }

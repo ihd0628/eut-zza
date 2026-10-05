@@ -1,12 +1,16 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
+  RoomAudioNotPreparedError,
   RoomBeatmapChangedError,
   RoomBeatmapNotSelectedError,
   RoomFullError,
   RoomHostRequiredError,
+  RoomNotEnoughParticipantsError,
   RoomNotFoundError,
+  RoomNotWaitingError,
   RoomParticipantNotFoundError,
+  RoomParticipantsNotReadyError,
   RoomSelectionLockedError,
   UserAlreadyInRoomError,
 } from "../src/domain/room.js";
@@ -20,6 +24,8 @@ test("방을 만들면 생성자가 방장이자 첫 참가자가 된다", () =>
   assert.equal(room.status, "waiting");
   assert.equal(room.selectedBeatmapId, null);
   assert.equal(room.participants[0]?.isReady, false);
+  assert.equal(room.participants[0]?.preparedBeatmapId, null);
+  assert.equal(room.currentGame, null);
   assert.deepEqual(room.participants.map(({ userId }) => userId), ["host"]);
   assert.deepEqual(store.listRooms(), [room]);
 });
@@ -155,9 +161,79 @@ test("반환된 방 정보를 수정해도 내부 방 상태는 변하지 않는
   const store = new RoomStore();
   const room = store.createRoom("host");
 
-  room.participants.push({ userId: "intruder", joinedAt: "now" });
+  room.participants.push({
+    userId: "intruder",
+    joinedAt: "now",
+    isReady: false,
+    preparedBeatmapId: null,
+  });
 
   assert.deepEqual(store.listRooms()[0]?.participants.map(({ userId }) => userId), [
     "host",
+  ]);
+});
+
+test("현재 선택된 채보의 음원을 준비한 참가자만 준비 채보를 기록한다", () => {
+  const store = new RoomStore();
+  const room = store.createRoom("host");
+  store.selectBeatmap(room.id, "host", "1");
+
+  assert.throws(
+    () => store.markAudioPrepared(room.id, "host", "2"),
+    RoomBeatmapChangedError,
+  );
+  assert.equal(
+    store.markAudioPrepared(room.id, "host", "1").participants[0]?.preparedBeatmapId,
+    "1",
+  );
+  assert.equal(store.clearAudioPrepared(room.id, "host")?.participants[0]?.preparedBeatmapId, null);
+});
+
+test("2명 이상이 준비 의사와 음원 준비를 모두 완료해야 시작을 잠근다", () => {
+  const store = new RoomStore();
+  const room = store.createRoom("host");
+  store.selectBeatmap(room.id, "host", "1");
+  store.setReady(room.id, "host", "1", true);
+  store.markAudioPrepared(room.id, "host", "1");
+
+  assert.throws(() => store.beginStart(room.id, "host"), RoomNotEnoughParticipantsError);
+
+  store.joinRoom(room.id, "guest");
+  assert.throws(() => store.beginStart(room.id, "host"), RoomParticipantsNotReadyError);
+  store.setReady(room.id, "guest", "1", true);
+  assert.throws(() => store.beginStart(room.id, "host"), RoomAudioNotPreparedError);
+  store.markAudioPrepared(room.id, "guest", "1");
+
+  assert.equal(store.beginStart(room.id, "host").status, "starting");
+  assert.throws(() => store.beginStart(room.id, "host"), RoomNotWaitingError);
+});
+
+test("시작 완료 시 모든 참가자가 같은 경기와 각자의 참가 ID를 받는다", () => {
+  const store = new RoomStore();
+  const room = store.createRoom("host");
+  store.joinRoom(room.id, "guest");
+  store.selectBeatmap(room.id, "host", "1");
+
+  for (const userId of ["host", "guest"]) {
+    store.setReady(room.id, userId, "1", true);
+    store.markAudioPrepared(room.id, userId, "1");
+  }
+
+  store.beginStart(room.id, "host");
+  const started = store.completeStart(room.id, {
+    gameSessionId: "10",
+    beatmapId: "1",
+    startAtServerMs: 1_000_000,
+    players: [
+      { userId: "host", gamePlayerId: "20" },
+      { userId: "guest", gamePlayerId: "21" },
+    ],
+  });
+
+  assert.equal(started.status, "playing");
+  assert.equal(started.currentGame?.gameSessionId, "10");
+  assert.deepEqual(started.currentGame?.players.map(({ gamePlayerId }) => gamePlayerId), [
+    "20",
+    "21",
   ]);
 });

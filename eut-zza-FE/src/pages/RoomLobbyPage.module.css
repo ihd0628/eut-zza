@@ -10,7 +10,8 @@
 .selectLabel { display: grid; gap: 8px; max-width: 480px; font-weight: 700; }
 .select { padding: 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text-h); }
 .select:disabled { opacity: .6; }
-.readyButton { padding: 10px 16px; border: 1px solid var(--accent-border); border-radius: 8px; background: var(--bg); color: var(--text-h); cursor: pointer; }
-.readyButton:disabled { opacity: .6; cursor: not-allowed; }
+.readyButton, .startButton { margin-right: 8px; padding: 10px 16px; border: 1px solid var(--accent-border); border-radius: 8px; background: var(--bg); color: var(--text-h); cursor: pointer; }
+.startButton { background: var(--accent); color: white; }
+.readyButton:disabled, .startButton:disabled { opacity: .6; cursor: not-allowed; }
 .error { color: #dc2626; }
 @media (max-width: 600px) { .participants li { flex-wrap: wrap; } }

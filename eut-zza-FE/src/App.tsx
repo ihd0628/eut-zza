@@ -3,6 +3,7 @@ import { AuthPanel } from "./components/AuthPanel";
 import { AppLayout } from "./components/AppLayout";
 import { RequireAuth } from "./components/RequireAuth";
 import { ModeSelectionPage } from "./pages/ModeSelectionPage";
+import { MultiplayerGamePage } from "./pages/MultiplayerGamePage";
 import { RecordsPage } from "./pages/RecordsPage";
 import { RoomBoundary } from "./pages/RoomBoundary";
 import { RoomListPage } from "./pages/RoomListPage";
@@ -30,7 +31,10 @@ export const router = createBrowserRouter([
           {
             path: "/multiplayer/rooms/:roomId",
             element: <RoomBoundary />,
-            children: [{ index: true, element: <RoomLobbyPage /> }],
+            children: [
+              { index: true, element: <RoomLobbyPage /> },
+              { path: "play", element: <MultiplayerGamePage /> },
+            ],
           },
         ],
       },
