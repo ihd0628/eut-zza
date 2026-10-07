@@ -1162,11 +1162,36 @@ Game End (서버가 경기 종료 및 참가자별 순위·우승자 판정)
 
 # Network Latency + Redis
 
-멀티플레이 게임에서 실제 네트워크 문제를 다룬다.
+멀티플레이 게임에서 실제 네트워크 지연과 여러 서버 프로세스가 공유해야 하는 상태를 다룬다.
+
+React에서 `fetch`, WebSocket API를 사용하는 수준을 넘어 다음 경계를 이해하는 것이 이번 주의 목표다.
+
+```text
+Browser / React
+
+↓ 네트워크를 통해 메시지 전송
+
+Fastify / WebSocket Server
+
+↓ 공유 상태 읽기·변경
+
+Redis + PostgreSQL
+```
+
+- React 상태는 한 브라우저 탭의 상태다.
+- Node.js의 `Map`은 한 서버 프로세스의 RAM에만 존재한다.
+- Redis는 여러 요청과 서버 프로세스가 공유할 수 있는 빠른 인메모리 저장소다.
+- PostgreSQL은 유실되면 안 되는 영속 데이터의 기준 저장소다.
+
+Redis를 PostgreSQL의 대체재로 사용하지 않는다. 경기 결과의 원본은 PostgreSQL에 저장하고, Redis는 매칭처럼 짧게 살아 있는 상태와 빠른 랭킹 조회에 사용한다.
 
 ---
 
-## 공부할 것
+## 진행 순서
+
+### 1단계 — 네트워크 시간의 의미 이해
+
+먼저 다음 값을 구분한다.
 
 ```text
 Latency
@@ -1182,39 +1207,147 @@ Client Timestamp
 Server Timestamp
 
 Clock Offset
+```
 
+- `Latency`는 데이터가 한쪽에서 다른 쪽으로 도착하는 데 걸리는 지연이다.
+- `RTT`는 클라이언트가 메시지를 보내고 응답을 받을 때까지의 왕복 시간이다.
+- `Jitter`는 여러 번 측정한 지연 시간이 일정하지 않고 흔들리는 현상이다.
+- `Packet Loss`는 전송 중 일부 패킷이 유실되는 현상이다.
+- WebSocket은 TCP 위에서 동작하므로 애플리케이션은 보통 유실되거나 순서가 뒤집힌 메시지를 그대로 받지 않는다. 대신 TCP 재전송과 앞선 데이터 대기로 지연이 커지거나 연결이 끊긴 것처럼 보일 수 있다.
+
+브라우저의 두 시계도 구분한다.
+
+- `performance.now()`는 현재 문서의 단조 증가 시간 측정에 적합하다.
+- `Date.now()`는 Unix epoch 기준 시각이지만 사용자의 시스템 시계 조정 영향을 받을 수 있다.
+- 서로 다른 기기의 `Date.now()` 값이 정확히 같다고 가정하지 않는다.
+
+### 2단계 — RTT와 서버 시각 차이 계산 원리 이해
+
+현재 WebSocket 시간 동기화 코드가 여러 표본을 주고받는 흐름을 분석한다.
+
+```text
+clientSentAt
+    ↓
+serverReceivedAt / serverSentAt
+    ↓
+clientReceivedAt
+```
+
+다음을 계산한다.
+
+```text
+RTT ≈ clientReceivedAt - clientSentAt
+
+클라이언트가 추정한 서버 시각 차이
+≈ serverSentAt - ((clientSentAt + clientReceivedAt) / 2)
+```
+
+왕복 경로가 대칭이라는 보장이 없으므로 이 값은 정확한 진실이 아니라 추정값이다. 한 번의 측정만 믿지 않고 여러 표본의 RTT와 clock offset을 비교하는 이유를 이해한다. 이상치의 영향을 줄이기 위해 최소 RTT 표본이나 중앙값을 사용하는 이유도 학습한다. 별도의 네트워크 진단 UI나 추가 측정 기능은 구현하지 않는다.
+
+### 3단계 — 지연이 게임에 미치는 영향 실험
+
+인위적인 지연과 지터를 적용하여 다음 현상을 관찰한다.
+
+- 준비 상태 반영이 늦어지는 현상
+- 경기 시작 메시지가 참가자마다 다른 시점에 도착하는 현상
+- 다른 참가자의 score/combo가 끊기거나 몰아서 갱신되는 현상
+- 경기 결과 제출 응답이 늦어 사용자가 재시도하는 상황
+
+공유 시작 시각과 브라우저별 clock offset을 이용해 메시지를 받은 즉시 시작하지 않고 같은 서버 기준 시각을 목표로 시작하는 방식을 이해한다.
+
+### 4단계 — Authoritative Server와 Client Prediction 이해
+
+```text
 Authoritative Server
 
 Client Prediction
+
+Trust Boundary
 ```
 
-WebSocket이 TCP 위에서 동작한다는 것도 연결해서 이해한다.
+- 방 상태, 참가자, 준비 여부, 매칭 확정, 경기 시작·종료 상태의 최종 결정권은 서버에 둔다.
+- 클라이언트가 보낸 timestamp와 score를 검증 없이 진실로 신뢰할 때 생기는 문제를 이해한다.
+- Client Prediction은 서버 응답을 기다리는 동안 화면을 즉시 반응시키는 기법이다.
+- 이번 프로젝트에서는 개념과 적용 가능 지점을 학습하되, 리듬 판정 전체를 서버에서 다시 실행하는 구조까지 만들지는 않는다.
+- 현재 클라이언트 판정 결과를 서버가 받는 구조의 신뢰 한계는 문서에 남긴다.
 
----
+### 5단계 — Redis 기초와 생명주기 학습
 
-## Redis
+Redis는 Node.js 객체가 아니라 별도로 실행되는 서버 프로세스다. 애플리케이션은 Redis 클라이언트와 TCP 연결을 맺고 명령을 보낸다.
 
 공부할 것:
 
 ```text
-Key/Value
+Key / Value
 
-TTL
+SET / GET / DEL
 
-Cache
+TTL / EXPIRE
 
 Sorted Set
 
 Atomic Operation
+
+Cache Hit / Cache Miss
+
+Cache Invalidation
 ```
 
----
+다음을 직접 확인한다.
 
-## 프로젝트 적용 1 — Matchmaking
+- 같은 key에 값을 저장하고 조회하고 삭제한다.
+- TTL이 지나면 key가 사라지는 것을 확인한다.
+- Redis key 이름에 도메인과 식별자를 포함하는 규칙을 만든다.
+- JSON 문자열 직렬화·역직렬화가 필요한 경우를 이해한다.
+- Redis 재시작이나 장애로 데이터가 사라질 수 있음을 이해한다.
+- Redis 연결 실패가 HTTP/WebSocket 요청 실패에 어떻게 전파되는지 이해한다.
+
+예시 key 규칙:
+
+```text
+eutzza:matchmaking:queue
+eutzza:matchmaking:player:{userId}
+eutzza:leaderboard:{songId}:{difficulty}
+```
+
+### 6단계 — Redis Leaderboard 구현
+
+Redis Sorted Set을 활용한다.
+
+```text
+member = userId
+score = bestScore
+
+ZADD
+ZRANGE / ZREVRANGE
+ZREVRANK
+```
+
+PostgreSQL과 Redis의 역할은 다음처럼 나눈다.
+
+```text
+경기 결과 저장
+    ↓
+PostgreSQL에 영속 저장
+    ↓
+Redis의 사용자 최고 점수 갱신
+    ↓
+Redis에서 빠르게 랭킹 조회
+```
+
+반드시 다음 문제를 함께 다룬다.
+
+- 새 점수가 기존 최고 점수보다 낮을 때 최고 점수를 덮어쓰지 않는다.
+- PostgreSQL 저장은 성공했지만 Redis 갱신은 실패한 경우를 고려한다.
+- Redis 데이터가 사라졌을 때 PostgreSQL을 기준으로 랭킹을 재구성할 수 있어야 한다.
+- 같은 점수의 사용자를 공동 순위로 보여줄지, 고유 순번으로 보여줄지 규칙을 정한다.
+- Redis의 `ZREVRANK`가 같은 점수에 자동으로 같은 등수를 부여하는 것은 아니라는 점을 이해한다.
+
+### 7단계 — 자동 Matchmaking 구현
 
 방 목록에서 직접 생성·입장하는 방식을 유지하면서 자동 매칭을 추가한다.
 매칭된 2~4명의 사용자는 Week 6에서 구현한 방·경기 흐름에 연결한다.
-4명이 채워지지 않았을 때의 대기 시간과 매칭 확정 조건을 정하고, 2인 매칭으로 고정하지 않는다.
+2인 매칭으로 고정하지 않고, 4명이 채워지지 않았을 때의 대기 시간과 매칭 확정 조건을 먼저 정한다.
 
 ```text
 Player A
@@ -1222,64 +1355,122 @@ Player B
 Player C
 Player D
 
-↓
+↓ 참가 / 취소
 
-Matchmaking Queue
+Redis Matchmaking Queue
 
-↓
+↓ 매칭 조건 확인
 
-2~4명 그룹 매칭 (최대 4명)
+2~4명 그룹을 한 번만 확정
 
 ↓
 
 같은 Room으로 연결 → 준비 → 함께 시작
 ```
 
----
-
-## 프로젝트 적용 2 — Leaderboard
-
-Redis Sorted Set을 활용한다.
+API와 상태 흐름은 다음 책임으로 나눈다.
 
 ```text
-score → ranking
+POST /matchmaking/join
+  대기열 참가, 중복 참가 방지
+
+DELETE /matchmaking
+  대기 취소
+
+GET /matchmaking/status
+  waiting / matched 상태 조회
+
+matchmaking service
+  매칭 조건과 그룹 확정
+
+room service
+  확정된 2~4명을 기존 Room으로 생성·입장 처리
 ```
 
----
+다음을 학습한다.
 
-## 추가 학습
+- 같은 사용자가 두 번 대기열에 들어가지 않게 하는 방법
+- 취소하거나 연결이 끊긴 사용자의 대기 상태를 정리하는 방법
+- TTL로 오래된 대기 상태를 정리하되 TTL만으로 모든 정합성을 해결할 수 없는 이유
+- 두 요청이 동시에 매칭을 시도해도 한 사용자가 두 방에 배정되지 않게 하는 방법
+- Redis 단일 명령의 원자성과 여러 명령을 묶어야 할 때의 race condition
+- 필요하면 Redis transaction 또는 Lua script로 검사와 변경을 원자적으로 처리하는 이유
+- 매칭은 Redis에 있는데 Room은 한 Node.js 프로세스의 RAM에만 있을 때 생기는 다중 서버 한계
 
-게임 결과 요청이 중복으로 들어오는 상황을 만든다.
+이번 주에는 단일 백엔드 인스턴스에서 기존 Room 흐름과 연결하되, 다중 인스턴스에서 Room 상태도 공유 저장소로 옮겨야 한다는 한계를 문서화한다.
+
+### 8단계 — 중복 요청과 장애 시나리오 검증
+
+게임 결과 응답이 클라이언트에 도착하지 않아 같은 요청이 다시 전송되는 상황을 만든다.
 
 ```text
 POST score
 
-timeout
+서버 저장 성공
 
-retry
+응답 timeout 또는 연결 끊김
 
-POST score
+client retry
+
+POST same score
 ```
 
-그리고:
+다음을 연결해서 이해한다.
 
 ```text
 Idempotency
 
 Unique Constraint
+
+Transaction
+
+Retry
 ```
 
-로 해결한다.
+- 같은 경기 참가자의 같은 결과를 재전송하면 중복 row를 만들지 않고 기존 성공 결과를 반환한다.
+- 같은 참가자에 대해 다른 결과가 재전송되면 충돌로 처리한다.
+- 애플리케이션의 사전 조회만으로 동시 요청 race condition을 막을 수 없으므로 DB unique constraint를 최종 방어선으로 사용한다.
+- Redis가 중단되어도 PostgreSQL에 저장된 경기 결과를 잃지 않는 구조를 확인한다.
+
+### 9단계 — 회귀 검증과 학습 문서 작성
+
+Redis와 자동 매칭을 추가한 뒤에도 기존 흐름이 유지되는지 확인한다.
+
+- 솔로 플레이와 결과 저장
+- 직접 방 생성·입장
+- 2~4명 준비·시작·경기 종료
+- 새로고침과 WebSocket 재연결
+- 방장의 곡·난이도 선택 권한
+- 방으로 돌아가기
+
+`eut-zza-BE/docs/week7`에 최소한 다음 내용을 정리한다.
+
+- RTT, jitter, clock offset 실험 결과
+- TCP 위 WebSocket에서 packet loss가 지연으로 보일 수 있는 이유
+- PostgreSQL, Redis, Node.js RAM의 역할 차이
+- Leaderboard 데이터 흐름과 Redis 유실 시 복구 방법
+- Matchmaking 경쟁 상태와 원자적으로 처리한 범위
+- 중복 결과 요청을 안전하게 처리한 방법
 
 ---
 
 ## 주간 완료 조건
 
+- [x] latency, RTT, jitter, packet loss의 차이와 TCP 기반 WebSocket에서 각각이 어떻게 관찰되는지 설명할 수 있다.
+- [x] `performance.now()`와 `Date.now()`의 차이 및 서로 다른 기기의 시계를 그대로 비교하면 안 되는 이유를 설명할 수 있다.
+- [x] 현재 WebSocket 시간 동기화 코드의 RTT 표본과 clock offset 추정 계산을 설명할 수 있다.
+- [ ] 인위적인 지연·지터 환경에서 경기 시작, 실시간 진행 상태, 결과 제출이 어떻게 달라지는지 관찰하고 설명할 수 있다.
+- [ ] Authoritative Server와 Client Prediction의 역할 차이 및 현재 클라이언트 판정 구조의 신뢰 한계를 설명할 수 있다.
+- [ ] Redis가 별도 서버 프로세스라는 것과 Node.js RAM, Redis, PostgreSQL의 역할 차이를 설명할 수 있다.
+- [ ] Redis의 key/value, TTL, Sorted Set, atomic operation을 직접 사용하고 key 생명주기를 설명할 수 있다.
+- [ ] PostgreSQL을 원본으로 유지하면서 Redis leaderboard가 동작하고, 더 낮은 점수·동점·Redis 유실 시 처리 규칙이 적용된다.
 - [ ] 직접 방 생성·입장을 유지하면서 자동 매칭으로도 2~4명이 같은 방·경기 흐름에 진입할 수 있다.
-- [ ] Redis leaderboard가 동작한다.
-- [ ] RTT를 직접 측정한다.
-- [ ] latency가 게임에 어떤 영향을 주는지 설명할 수 있다.
-- [ ] duplicate request를 안전하게 처리할 수 있다.
+- [ ] 자동 매칭 참가·취소·상태 조회가 동작하고 같은 사용자의 중복 대기와 중복 방 배정을 막는다.
+- [ ] 동시 매칭 요청에서도 방 정원 4명을 넘지 않고 한 사용자가 하나의 매칭에만 포함된다.
+- [ ] 같은 경기 결과 요청의 재시도는 중복 row 없이 성공하고, 서로 다른 결과의 재시도는 충돌로 처리된다.
+- [ ] Redis 장애 또는 재시작 시 영속 결과가 보존되며 leaderboard 복구 방법과 matchmaking 상태 한계를 설명할 수 있다.
+- [ ] Redis와 자동 매칭 추가 후에도 솔로 플레이와 직접 방 생성·입장 흐름이 정상 동작한다.
+- [ ] Week 7 실험과 설계 결정을 `eut-zza-BE/docs/week7`에 정리했다.
 
 ---
 
