@@ -25,7 +25,7 @@
 - WebSocket을 이용해 실시간 게임 상태를 전달할 수 있는가?
 - latency가 있는 환경에서 client와 server의 책임을 구분할 수 있는가?
 - Redis를 matchmaking과 leaderboard에 활용할 수 있는가?
-- Docker와 AWS를 이용해 서비스를 실제 인터넷에 배포할 수 있는가?
+- Docker와 Railway를 이용해 서비스를 실제 인터넷에 배포할 수 있는가?
 - 테스트와 CI로 코드의 invariant를 자동 검증할 수 있는가?
 - AI Agent에게 기능 구현을 위임하고 결과를 검증할 수 있는가?
 - AI Agent가 안정적으로 작업할 수 있도록 repository와 validation harness를 설계할 수 있는가?
@@ -97,7 +97,7 @@ Redis
 ```text
 Docker
 GitHub Actions
-AWS
+Railway
 ```
 
 ---
@@ -1480,149 +1480,365 @@ Redis와 자동 매칭을 추가한 뒤에도 기존 흐름이 유지되는지 �
 
 ## 10월 13일 ~ 10월 19일
 
-# Docker + AWS + CI/CD
+# Docker + Railway + CI/CD
 
-로컬 애플리케이션을 실제 서비스로 만든다.
+로컬에서만 실행하던 애플리케이션을 Container로 만들고 Railway에 배포한다.
+
+Railway 사용법만 암기하는 것이 아니라 다음 경계를 이해하는 것이 이번 주의 목표다.
+
+```text
+Source Code
+
+↓ Docker Build
+
+Image
+
+↓ Container 실행
+
+Railway Service
+
+↓ Public / Private Network
+
+Browser + PostgreSQL + Redis
+```
+
+Railway가 Server, Reverse Proxy, TLS 인증서와 내부 Network를 관리해 주더라도 애플리케이션의 Port, 환경변수, Cookie, CORS, Migration과 Process Lifecycle은 개발자가 올바르게 설계해야 한다.
 
 ---
 
-## Docker
+## 목표 배포 구조
+
+Railway Project 하나에 네 Service를 둔다.
+
+```text
+Browser
+├── HTTPS ──> Frontend Service
+└── HTTPS / WSS ──> Backend Service
+                           │
+                           ├── Railway Private Network ──> PostgreSQL
+                           └── Railway Private Network ──> Redis
+```
+
+- Frontend와 Backend만 Public Domain을 가진다.
+- PostgreSQL과 Redis는 원칙적으로 Public Internet에 노출하지 않는다.
+- Browser는 Railway Private Domain에 접근할 수 없으므로 Public Backend Domain으로 요청한다.
+- Railway가 외부 HTTPS/WSS 연결의 TLS를 처리하고 Service Container로 전달하는 흐름을 이해한다.
+
+현재 `RoomStore`는 한 Node.js Process의 RAM에 있다. 따라서 이번 배포에서는 Backend를 단일 Replica로 운영한다. 여러 Replica로 확장하면 사용자가 서로 다른 Process의 Room 상태를 보게 되는 한계를 문서화한다.
+
+---
+
+## 진행 순서
+
+### 1단계 — 배포 환경과 로컬 환경의 차이 정리
+
+현재 코드에서 로컬 주소와 설정에 고정된 부분을 환경변수로 분리한다.
+
+```text
+Backend
+├── HOST=0.0.0.0
+├── PORT=Railway가 주입한 Port
+├── FRONTEND_ORIGIN
+├── PostgreSQL 연결 정보
+├── REDIS_URL
+└── NODE_ENV
+
+Frontend Build
+└── VITE_API_BASE_URL
+```
+
+다음을 이해한다.
+
+- `127.0.0.1`에만 Bind한 Process를 Container 외부에서 접근할 수 없는 이유
+- Railway가 주입한 `PORT`에서 Listen해야 하는 이유
+- Vite의 환경변수는 대부분 Runtime이 아니라 Build Time에 JavaScript Bundle에 포함된다는 점
+- 비밀 값과 공개되어도 되는 Frontend Build 변수를 구분하는 방법
+- 운영 Origin에 맞게 CORS와 인증 Cookie를 설정해야 하는 이유
+- HTTPS Frontend에서는 WebSocket도 `wss://`를 사용해야 하는 이유
+
+### 2단계 — Docker 원리 학습
 
 이해할 것:
 
 ```text
 Image
-
 Container
-
 Layer
-
 Dockerfile
-
 Volume
-
 Network
-
 Environment Variable
+Build Stage
+Runtime Stage
+PID 1
+Signal
+Stateless Filesystem
 ```
 
-단순 명령어 암기가 아니라:
+단순 명령어 암기가 아니라 다음을 설명할 수 있어야 한다.
 
-> Container가 프로세스를 어떻게 격리하는가?
+- Image와 실행 중인 Container의 차이
+- Image Layer가 Build Cache와 배포 크기에 미치는 영향
+- Container가 Process, Filesystem과 Network 경계를 어떻게 격리하는지
+- Container가 종료되면 내부의 임시 파일을 영속 데이터로 믿을 수 없는 이유
+- 실행 Process가 종료되면 Container도 종료되는 이유
+- 배포 종료 시 `SIGTERM`을 받고 HTTP, PostgreSQL, Redis 연결을 정리해야 하는 이유
+- Multi-stage Build가 Build 도구를 Runtime Image에서 제외하는 방법
 
-정도까지 이해한다.
+### 3단계 — Frontend와 Backend Dockerfile 작성
+
+Frontend는 Build 환경과 정적 파일 제공 환경을 분리한다.
+
+```text
+Node.js Build Stage
+├── npm ci
+└── Vite build
+
+Nginx Runtime Stage
+├── dist 정적 파일 제공
+└── React Router SPA fallback
+```
+
+Backend도 Build 환경과 Runtime 환경을 분리한다.
+
+```text
+Node.js Build Stage
+├── npm ci
+└── TypeScript build
+
+Node.js Runtime Stage
+├── production dependency
+├── dist
+└── Fastify Process
+```
+
+각 Project에 `.dockerignore`를 만들고 다음 파일이 Image에 들어가지 않게 한다.
+
+```text
+node_modules
+dist
+.env
+Test와 Playwright 임시 산출물
+```
+
+Docker Image를 직접 Build하고 Container를 실행해 다음을 확인한다.
+
+- Frontend 새로고침에서 React Router 경로가 유지된다.
+- Backend `/health`가 Container 외부에서 응답한다.
+- 환경변수가 바뀌었을 때 Build Time과 Runtime 중 어느 단계에 반영되는지 구분한다.
+
+### 4단계 — Production Database Migration 준비
+
+Railway PostgreSQL은 기존 로컬 DB의 Table을 자동으로 복사하지 않는다.
+
+```text
+빈 PostgreSQL
+
+↓ Migration Runner
+
+001-initial-schema.sql
+002-add-game-session-mode.sql
+003-add-multiplayer-result-status.sql
+
+↓
+
+현재 Schema
+```
+
+다음을 구현하고 이해한다.
+
+- 실행된 Migration을 기록하는 Table
+- SQL 파일을 이름순으로 한 번씩만 실행하는 Migration 명령
+- 하나의 Migration을 Transaction으로 처리하는 이유
+- Schema Migration과 개발용 Seed Data의 차이
+- Application Process 시작과 Migration 실행 책임을 분리하는 이유
+- 배포 전 Migration 실패 시 새 Application 배포도 중단해야 하는 이유
+
+### 5단계 — Railway 기본 개념 학습
+
+```text
+Project
+Service
+Environment
+Deployment
+Variable / Secret
+Reference Variable
+Public Domain
+Private Domain
+Healthcheck
+Build Command
+Start Command
+Pre-deploy Command
+Restart Policy
+Log
+```
+
+Railway가 Dockerfile로 Image를 Build하고 Container를 실행한 뒤 Public Reverse Proxy를 통해 요청을 전달하는 흐름을 연결해서 이해한다.
+
+### 6단계 — Railway Project 구성
+
+현재 저장소는 서로 코드를 공유하지 않는 두 Project가 한 저장소에 있는 isolated monorepo다.
+
+```text
+eut-zza/
+├── eut-zza-FE/
+└── eut-zza-BE/
+```
+
+Railway에서 다음 Service를 만든다.
+
+```text
+Frontend Service
+└── Root Directory: /eut-zza-FE
+
+Backend Service
+└── Root Directory: /eut-zza-BE
+
+PostgreSQL Service
+
+Redis Service
+```
+
+Frontend와 Backend의 Watch Path를 분리해 한쪽 코드 변경이 관련 없는 Service를 다시 Build하지 않도록 한다.
+
+Railway Reference Variable로 Backend가 PostgreSQL과 Redis의 내부 연결 정보를 사용하게 한다. Connection String을 Source Code나 GitHub에 직접 기록하지 않는다.
+
+### 7단계 — Railway 배포와 Network 연결
+
+배포 순서는 다음과 같다.
+
+```text
+PostgreSQL + Redis 준비
+
+↓
+
+Migration 실행
+
+↓
+
+Backend 배포와 /health 확인
+
+↓
+
+Backend Public Domain을 Frontend Build 변수에 연결
+
+↓
+
+Frontend 배포
+```
+
+Railway Healthcheck는 새 Deployment의 `/health`가 `2xx`를 반환한 뒤 Traffic을 전환하도록 설정한다. Healthcheck가 지속적인 Monitoring 전체를 대신하는 것은 아니라는 점도 구분한다.
+
+처음에는 Railway 제공 Domain을 사용하고, Custom Domain은 선택 사항으로 둔다. 어느 경우든 다음을 확인한다.
+
+- HTTPS Frontend 접속
+- HTTPS API 요청
+- WSS WebSocket Upgrade
+- 운영 CORS Header
+- 회원가입·로그인 Session Cookie
+- PostgreSQL 영속 결과 저장
+- Redis Leaderboard와 자동 Matchmaking
+- 재배포 후 PostgreSQL 데이터 유지
+- Backend 재시작 시 RAM의 Room이 사라지는 현재 한계
+
+### 8단계 — GitHub Actions CI 작성
+
+Pull Request와 `main` Branch Push에서 다음 검증을 자동 실행한다.
+
+```text
+Checkout
+
+↓
+
+Frontend
+├── npm ci
+├── Lint
+└── Build
+
+Backend
+├── npm ci
+├── Type Check
+├── Lint
+├── Unit Test
+└── Build
+```
+
+CI와 CD의 책임을 구분한다.
+
+```text
+GitHub Actions CI
+→ Commit이 배포 가능한지 검증
+
+Railway CD
+→ 검증된 main Commit을 Build하고 배포
+```
+
+Railway의 GitHub Autodeploy와 `Wait for CI`를 사용해 CI가 실패한 Commit은 배포하지 않는다. Migration은 CI에서 Production DB에 직접 실행하지 않고 Railway Pre-deploy Command에서 실행한다.
+
+### 9단계 — 운영 회귀 검증과 문서화
+
+배포 후 최소한 다음 사용자 흐름을 실제 Public Domain에서 확인한다.
+
+```text
+회원가입 / 로그인 / 로그아웃
+
+솔로 플레이 / 결과 저장 / 랭킹
+
+직접 방 생성·입장
+
+2~4명 자동 Matchmaking
+
+WebSocket 준비·시작·실시간 점수·결과
+
+새로고침과 재접속
+```
+
+Railway Deployment Log, Application Log, Healthcheck 상태를 확인하고 실패 원인을 다음 계층으로 나누어 진단한다.
+
+```text
+Build 실패
+Container 시작 실패
+Port / Healthcheck 실패
+Environment Variable 오류
+Database / Redis 연결 실패
+CORS / Cookie / HTTPS 오류
+Application 오류
+```
+
+`eut-zza-BE/docs/week8`에 Docker, Railway 구성, Network, Migration과 CI/CD 흐름을 정리한다. 실제 Secret 값은 문서나 Git에 기록하지 않는다.
 
 ---
 
-## 배포 구조
+## 이번 주에 깊게 다루지 않는 것
 
-예:
+- Kubernetes
+- 직접 Server Provisioning과 운영체제 설정
+- 여러 Backend Replica의 Room 상태 공유
+- 무중단 Database Schema 변경의 고급 전략
+- Terraform 같은 Infrastructure as Code
+- 별도 Observability Platform 구축
 
-```text
-Browser
-
-↓
-
-CloudFront
-
-↓
-
-Frontend Static Files
-```
-
-Backend:
-
-```text
-Internet
-
-↓
-
-Load Balancer / Reverse Proxy
-
-↓
-
-Node.js API
-```
-
-Database:
-
-```text
-PostgreSQL
-Redis
-```
-
----
-
-## AWS
-
-이번 기간에는 깊게 파지 않는다.
-
-핵심:
-
-```text
-EC2
-
-S3
-
-CloudFront
-
-RDS
-
-Security Group
-
-IAM
-
-Route53
-```
-
----
-
-## CI/CD
-
-GitHub Actions:
-
-```text
-Push
-
-↓
-
-Install
-
-↓
-
-Type Check
-
-↓
-
-Lint
-
-↓
-
-Unit Test
-
-↓
-
-Integration Test
-
-↓
-
-Build
-
-↓
-
-Deploy
-```
+Railway가 추상화한 영역도 존재한다는 사실을 알고, 현재 서비스 배포에 필요한 Container와 Application 경계를 우선 학습한다.
 
 ---
 
 ## 주간 완료 조건
 
-- [ ] Dockerfile을 직접 작성했다.
-- [ ] Frontend와 Backend를 배포했다.
-- [ ] HTTPS 도메인으로 접속할 수 있다.
-- [ ] DB가 production 환경에서 동작한다.
-- [ ] CI가 자동 실행된다.
-- [ ] 배포 과정을 설명할 수 있다.
+- [ ] Image, Container, Layer, Multi-stage Build와 Process Lifecycle을 설명할 수 있다.
+- [ ] Frontend와 Backend Dockerfile 및 `.dockerignore`를 직접 작성했다.
+- [ ] Frontend Container가 정적 파일과 React Router SPA fallback을 제공한다.
+- [ ] Backend가 `0.0.0.0`과 환경변수 `PORT`에서 실행되고 종료 시 Resource를 정리한다.
+- [ ] 운영 CORS, Cookie, API URL과 WebSocket URL을 환경변수 기준으로 구성했다.
+- [ ] 빈 PostgreSQL에 SQL Migration을 순서대로 한 번씩 적용할 수 있다.
+- [ ] Railway에 Frontend, Backend, PostgreSQL, Redis Service를 구성했다.
+- [ ] PostgreSQL과 Redis를 Railway Private Network로 연결했다.
+- [ ] Railway Public Domain에서 Frontend HTTPS, Backend HTTPS와 WebSocket WSS가 동작한다.
+- [ ] 솔로·직접 방·자동 매칭·멀티플레이·랭킹 흐름이 Production 환경에서 동작한다.
+- [ ] Healthcheck, Deployment Log와 Application Log로 배포 실패를 진단할 수 있다.
+- [ ] GitHub Actions에서 FE·BE 검증이 자동 실행된다.
+- [ ] Railway가 CI 성공 후에만 `main` Commit을 자동 배포한다.
+- [ ] 현재 RoomStore 때문에 Backend를 단일 Replica로 운영해야 하는 이유를 설명할 수 있다.
+- [ ] Docker부터 Railway 배포까지의 전체 흐름을 `eut-zza-BE/docs/week8`에 정리했다.
 
 ---
 
@@ -2027,7 +2243,7 @@ PostgreSQL
 
 Docker
 
-AWS
+Railway
 ```
 
 각 계층의 책임을 설명한다.
@@ -2073,7 +2289,7 @@ AWS
 ## Infrastructure
 
 - Docker image와 container의 차이를 설명할 수 있다.
-- 서비스를 AWS에 직접 배포할 수 있다.
+- 서비스를 Railway에 직접 배포할 수 있다.
 - DNS/HTTPS가 어떻게 연결되는지 이해한다.
 - CI/CD pipeline을 만들 수 있다.
 
@@ -2192,7 +2408,7 @@ JavaScript ── React ── Game Engine
        │
              Infrastructure
                    │
-                  AWS
+                Railway
 ```
 
 이 전체 구조가 머릿속에서 하나의 시스템으로 연결되는 것이다.
