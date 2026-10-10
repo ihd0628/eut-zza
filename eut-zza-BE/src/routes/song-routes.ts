@@ -6,6 +6,11 @@ import {
   listSongs,
   SongNotFoundError,
 } from "../services/song-service.js";
+import type { LeaderboardService } from "../services/leaderboard-service.js";
+
+type SongRoutesOptions = {
+  leaderboardService: LeaderboardService;
+};
 
 type SongParams = {
   id: string;
@@ -43,7 +48,10 @@ const songRankingQuerystringSchema = {
 } as const;
 
 // Fastify Plugin은 전달받은 Fastify 인스턴스에 곡 관련 Route를 등록한다.
-export const songRoutes: FastifyPluginAsync = async (server) => {
+export const songRoutes: FastifyPluginAsync<SongRoutesOptions> = async (
+  server,
+  { leaderboardService },
+) => {
   server.get("/songs", async () => {
     const songs = await listSongs();
 
@@ -95,6 +103,7 @@ export const songRoutes: FastifyPluginAsync = async (server) => {
         const ranking = await getSongRanking(
           request.params.id,
           request.query.difficulty,
+          leaderboardService,
         );
 
         return {

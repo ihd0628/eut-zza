@@ -14,6 +14,18 @@ export type Score = CreateScoreInput & {
   id: string;
 };
 
+export const scoreMatchesInput = (
+  score: Score,
+  input: CreateScoreInput,
+): boolean =>
+  score.gamePlayerId === input.gamePlayerId &&
+  score.score === input.score &&
+  score.perfectCount === input.perfectCount &&
+  score.greatCount === input.greatCount &&
+  score.goodCount === input.goodCount &&
+  score.missCount === input.missCount &&
+  score.maxCombo === input.maxCombo;
+
 // 사용자 기록 화면에 필요한 여러 테이블의 조회 결과다.
 export type UserScoreEntry = {
   scoreId: string;

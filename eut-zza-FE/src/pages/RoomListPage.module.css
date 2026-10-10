@@ -4,9 +4,12 @@
 .header h1 { margin: 0; color: var(--text-h); }
 .eyebrow { color: var(--accent); font-weight: 800; letter-spacing: .15em; }
 .rooms { display: grid; gap: 12px; padding: 0; list-style: none; }
+.matchmaking { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin: 24px 0; padding: 20px; border: 1px solid var(--accent-border); border-radius: 12px; background: var(--surface); }
+.matchmaking h2 { margin: 0; color: var(--text-h); }
+.matchmaking p:last-child { margin-bottom: 0; }
 .room { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px; border: 1px solid var(--border); border-radius: 12px; }
 .room p { margin-bottom: 0; }
-.header button, .room button { padding: 10px 16px; border: 1px solid var(--accent-border); border-radius: 8px; background: var(--bg); color: var(--text-h); cursor: pointer; }
-.header button:disabled, .room button:disabled { opacity: .5; cursor: not-allowed; }
+.header button, .room button, .matchmaking button { padding: 10px 16px; border: 1px solid var(--accent-border); border-radius: 8px; background: var(--bg); color: var(--text-h); cursor: pointer; }
+.header button:disabled, .room button:disabled, .matchmaking button:disabled { opacity: .5; cursor: not-allowed; }
 .error { color: #dc2626; }
-@media (max-width: 600px) { .header { align-items: start; flex-direction: column; } }
+@media (max-width: 600px) { .header, .matchmaking { align-items: start; flex-direction: column; } }

@@ -93,6 +93,34 @@ export class RoomStore {
     return snapshotRoom(room);
   }
 
+  createMatchedRoom(userIds: string[]): Room {
+    const uniqueUserIds = [...new Set(userIds)];
+    if (uniqueUserIds.length < 2 || uniqueUserIds.length > ROOM_CAPACITY) {
+      throw new Error("A matched room requires between 2 and 4 unique players");
+    }
+    for (const userId of uniqueUserIds) this.ensureUserIsNotInAnotherRoom(userId);
+
+    const createdAt = new Date().toISOString();
+    const room: Room = {
+      id: randomUUID(),
+      hostUserId: uniqueUserIds[0]!,
+      status: "waiting",
+      selectedBeatmapId: null,
+      lastCompletedGameSessionId: null,
+      participants: uniqueUserIds.map((userId) => ({
+        userId,
+        joinedAt: createdAt,
+        isReady: false,
+        preparedBeatmapId: null,
+      })),
+      currentGame: null,
+      createdAt,
+    };
+
+    this.rooms.set(room.id, room);
+    return snapshotRoom(room);
+  }
+
   joinRoom(roomId: string, userId: string): Room {
     const room = this.rooms.get(roomId);
 

@@ -24,11 +24,13 @@ import {
 import type { RoomStore } from "../services/room-service.js";
 import type { RoomPresence } from "../services/room-presence.js";
 import type { MultiplayerGameCoordinator } from "../services/multiplayer-game-coordinator.js";
+import type { MatchmakingService } from "../services/matchmaking-service.js";
 
 type RoomRoutesOptions = {
   roomStore: RoomStore;
   roomPresence: RoomPresence;
   multiplayerGameCoordinator: MultiplayerGameCoordinator;
+  matchmakingService: MatchmakingService;
 };
 
 type RoomParams = {
@@ -89,7 +91,7 @@ const roomParamsSchema = {
 
 export const roomRoutes: FastifyPluginAsync<RoomRoutesOptions> = async (
   server,
-  { roomStore, roomPresence, multiplayerGameCoordinator },
+  { roomStore, roomPresence, multiplayerGameCoordinator, matchmakingService },
 ) => {
   server.get(
     "/rooms",
@@ -126,6 +128,7 @@ export const roomRoutes: FastifyPluginAsync<RoomRoutesOptions> = async (
       try {
         const user = getAuthenticatedRequestUser(request);
         const room = roomStore.createRoom(user.id);
+        await matchmakingService.cancelWaitingBestEffort(user.id);
         roomPresence.expectConnection(room.id, user.id);
 
         return reply.code(201).send({ room });
@@ -149,6 +152,7 @@ export const roomRoutes: FastifyPluginAsync<RoomRoutesOptions> = async (
       try {
         const user = getAuthenticatedRequestUser(request);
         const room = roomStore.joinRoom(request.params.id, user.id);
+        await matchmakingService.cancelWaitingBestEffort(user.id);
         roomPresence.expectConnection(room.id, user.id);
         roomPresence.broadcastRoom(room.id);
 

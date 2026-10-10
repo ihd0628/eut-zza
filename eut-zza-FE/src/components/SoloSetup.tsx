@@ -8,6 +8,7 @@ import {
 } from "../api/song-api";
 import { songsQueryKey } from "../query/query-keys";
 import styles from "./SoloSetup.module.css";
+import { LeaderboardPanel } from "./LeaderboardPanel";
 
 export type SoloGameSelection = {
   song: Song;
@@ -139,6 +140,13 @@ export const SoloSetup = ({ onStart }: SoloSetupProps) => {
           </div>
         )}
       </div>
+
+      {selectedSong !== undefined && selectedBeatmap !== undefined ? (
+        <LeaderboardPanel
+          songId={selectedSong.id}
+          difficulty={selectedBeatmap.difficulty}
+        />
+      ) : null}
 
       <button
         className={styles.startButton}

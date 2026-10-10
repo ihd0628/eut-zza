@@ -8,10 +8,12 @@ import {
   createScore,
   findGamePlayerOwnerId,
 } from "../repositories/score-repository.js";
+import type { LeaderboardService } from "./leaderboard-service.js";
 
 export const submitScore = async (
   authenticatedUserId: string,
   input: CreateScoreInput,
+  leaderboardService: LeaderboardService,
 ): Promise<Score> => {
   const ownerUserId = await findGamePlayerOwnerId(input.gamePlayerId);
 
@@ -23,5 +25,7 @@ export const submitScore = async (
     throw new ScoreSubmissionForbiddenError();
   }
 
-  return createScore(input);
+  const score = await createScore(input);
+  await leaderboardService.refreshForGamePlayer(score.gamePlayerId);
+  return score;
 };

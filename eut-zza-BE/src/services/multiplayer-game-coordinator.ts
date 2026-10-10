@@ -11,6 +11,7 @@ import {
 import { startMultiplayerGame } from "./game-session-service.js";
 import type { RoomPresence } from "./room-presence.js";
 import type { RoomStore } from "./room-service.js";
+import type { LeaderboardService } from "./leaderboard-service.js";
 
 export class MultiplayerGameCoordinator {
   private readonly deadlineTimers = new Map<string, NodeJS.Timeout>();
@@ -18,6 +19,7 @@ export class MultiplayerGameCoordinator {
   constructor(
     private readonly roomStore: RoomStore,
     private readonly roomPresence: RoomPresence,
+    private readonly leaderboardService: LeaderboardService,
   ) {}
 
   async startGame(roomId: string, hostUserId: string) {
@@ -62,6 +64,9 @@ export class MultiplayerGameCoordinator {
     const room = this.roomStore.applyMultiplayerResultState(roomId, state);
     this.finishIfCompleted(state.gameSessionId, state.status);
     this.roomPresence.broadcastRoom(roomId);
+    if (state.status === "completed") {
+      await this.leaderboardService.refreshForGameSession(state.gameSessionId);
+    }
     return { room, resultState: state };
   }
 
@@ -78,6 +83,9 @@ export class MultiplayerGameCoordinator {
     this.roomStore.applyMultiplayerResultState(roomId, state);
     this.finishIfCompleted(state.gameSessionId, state.status);
     this.roomPresence.broadcastRoom(roomId);
+    if (state.status === "completed") {
+      await this.leaderboardService.refreshForGameSession(state.gameSessionId);
+    }
   }
 
   async getResult(gameSessionId: string, userId: string) {
@@ -104,6 +112,7 @@ export class MultiplayerGameCoordinator {
         this.roomStore.applyMultiplayerResultState(roomId, state);
         this.roomPresence.broadcastRoom(roomId);
       }
+      await this.leaderboardService.refreshForGameSession(gameSessionId);
     } catch (error: unknown) {
       console.error("[MultiplayerGame] Failed to expire game", error);
     }

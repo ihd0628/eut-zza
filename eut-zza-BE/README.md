@@ -25,6 +25,11 @@ npm run dev:fastify
 Fastify 서버는 `127.0.0.1:3001`을 사용하므로 두 서버를 동시에 실행하고
 같은 `/health` 응답을 비교할 수 있다.
 
+Week 7의 자동 매칭과 랭킹 캐시를 사용하려면 `.env`의 `REDIS_URL`에서
+접근 가능한 Redis 서버도 실행 중이어야 한다. Redis가 중단되어도 랭킹은
+PostgreSQL 조회로 대체되고 영속 점수 저장은 유지되지만, 자동 매칭 API는
+`503 Service Unavailable`을 반환한다.
+
 ```bash
 curl -i http://127.0.0.1:3000/health
 curl -i http://127.0.0.1:3001/health
@@ -104,6 +109,7 @@ Fastify의 곡 목록·단일 곡 조회, 점수 저장, 랭킹·경기 기록 �
 주차별 문서의 목차와 학습 순서는 다음 파일에서 확인한다.
 
 - [`docs/week4/README.md`](./docs/week4/README.md): PostgreSQL, SQL, 인덱스, 트랜잭션, Fastify DB API와 실행 결과
+- [`docs/week7/README.md`](./docs/week7/README.md): 네트워크 시간, Trust Boundary, Redis, 랭킹, 자동 매칭과 멱등성
 
 Week 3의 HTTP·Network·Node.js 문서는 다음과 같다.
 
@@ -133,6 +139,9 @@ Fastify 서버에 추가한 PostgreSQL API:
 POST /scores
 GET  /songs/:id/ranking?difficulty=normal
 GET  /users/:id/scores
+POST /matchmaking/join
+GET  /matchmaking/status
+DELETE /matchmaking
 ```
 
 Fastify의 `/songs`와 `/songs/:id`도 DB를 사용한다. 입력 검증과 실제 확인한

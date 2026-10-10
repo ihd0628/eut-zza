@@ -12,6 +12,7 @@ import {
 import {
   GamePlayerNotFoundError,
   ScoreAlreadyExistsError,
+  scoreMatchesInput,
   type CreateScoreInput,
   type Score,
   type UserBestScoreEntry,
@@ -39,6 +40,29 @@ type SoloSavedResultRow = Pick<
   goodCount: number;
   missCount: number;
   maxCombo: number;
+};
+
+const selectScoreByGamePlayerId = async (
+  queryable: { query: typeof pool.query },
+  gamePlayerId: string,
+): Promise<Score | undefined> => {
+  const result = await queryable.query<Score>(
+    `
+      SELECT
+        id,
+        game_player_id AS "gamePlayerId",
+        score,
+        perfect_count AS "perfectCount",
+        great_count AS "greatCount",
+        good_count AS "goodCount",
+        miss_count AS "missCount",
+        max_combo AS "maxCombo"
+      FROM scores
+      WHERE game_player_id = $1
+    `,
+    [gamePlayerId],
+  );
+  return result.rows[0];
 };
 
 export const findGamePlayerOwnerId = async (
@@ -105,6 +129,13 @@ export const createScore = async (input: CreateScoreInput): Promise<Score> => {
       error.code === "23505" &&
       error.constraint === "scores_game_player_id_key"
     ) {
+      const existing = await selectScoreByGamePlayerId(
+        pool,
+        input.gamePlayerId,
+      );
+      if (existing !== undefined && scoreMatchesInput(existing, input)) {
+        return existing;
+      }
       throw new ScoreAlreadyExistsError();
     }
 
@@ -160,6 +191,18 @@ export const completeSoloGameWithScore = async (
 
     if (context.userId !== authenticatedUserId) {
       throw new SoloGameCompletionForbiddenError();
+    }
+
+    if (context.status === "completed") {
+      const existing = await selectScoreByGamePlayerId(
+        client,
+        input.gamePlayerId,
+      );
+      if (existing !== undefined && scoreMatchesInput(existing, input)) {
+        await client.query("COMMIT");
+        return { gameSession: context, score: existing };
+      }
+      throw new ScoreAlreadyExistsError();
     }
 
     if (context.status !== "playing") {

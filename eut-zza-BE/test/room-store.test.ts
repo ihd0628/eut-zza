@@ -31,6 +31,22 @@ test("방을 만들면 생성자가 방장이자 첫 참가자가 된다", () =>
   assert.deepEqual(store.listRooms(), [room]);
 });
 
+test("자동 매칭은 2~4명의 고유 사용자를 정원 내 한 방으로 만든다", () => {
+  for (const count of [2, 3, 4]) {
+    const store = new RoomStore();
+    const userIds = Array.from({ length: count }, (_, index) => `user-${index + 1}`);
+    const room = store.createMatchedRoom(userIds);
+
+    assert.equal(room.hostUserId, "user-1");
+    assert.deepEqual(room.participants.map(({ userId }) => userId), userIds);
+  }
+
+  const store = new RoomStore();
+  assert.throws(() => store.createMatchedRoom(["one"]));
+  assert.throws(() => store.createMatchedRoom(["same", "same"]));
+  assert.throws(() => store.createMatchedRoom(["1", "2", "3", "4", "5"]));
+});
+
 test("방장만 채보를 선택하고, 선택 전에는 준비할 수 없다", () => {
   const store = new RoomStore();
   const room = store.createRoom("host");

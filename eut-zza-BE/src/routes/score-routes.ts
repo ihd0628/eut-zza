@@ -10,6 +10,11 @@ import {
   getAuthenticatedRequestUser,
 } from "../hooks/authentication.js";
 import { submitScore } from "../services/score-service.js";
+import type { LeaderboardService } from "../services/leaderboard-service.js";
+
+type ScoreRoutesOptions = {
+  leaderboardService: LeaderboardService;
+};
 
 const nonNegativeIntegerSchema = {
   type: "integer",
@@ -44,7 +49,10 @@ const createScoreBodySchema = {
   },
 } as const;
 
-export const scoreRoutes: FastifyPluginAsync = async (server) => {
+export const scoreRoutes: FastifyPluginAsync<ScoreRoutesOptions> = async (
+  server,
+  { leaderboardService },
+) => {
   server.post<{ Body: CreateScoreInput }>(
     "/scores",
     {
@@ -56,7 +64,7 @@ export const scoreRoutes: FastifyPluginAsync = async (server) => {
     async (request, reply) => {
       try {
         const user = getAuthenticatedRequestUser(request);
-        const score = await submitScore(user.id, request.body);
+        const score = await submitScore(user.id, request.body, leaderboardService);
 
         return reply.code(201).send({
           score,

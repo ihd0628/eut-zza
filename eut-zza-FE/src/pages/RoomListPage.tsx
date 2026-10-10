@@ -1,8 +1,14 @@
+import { useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useOutletContext } from "react-router";
 import type { User } from "../api/auth-api";
+import {
+  cancelMatchmaking,
+  getMatchmakingStatus,
+  joinMatchmaking,
+} from "../api/matchmaking-api";
 import { createRoom, getRooms, joinRoom, type Room } from "../api/room-api";
-import { roomsQueryKey } from "../query/query-keys";
+import { matchmakingQueryKey, roomsQueryKey } from "../query/query-keys";
 import styles from "./RoomListPage.module.css";
 
 export const RoomListPage = () => {
@@ -14,16 +20,47 @@ export const RoomListPage = () => {
     queryFn: getRooms,
     refetchInterval: 5_000,
   });
+  const matchmakingQuery = useQuery({
+    queryKey: matchmakingQueryKey,
+    queryFn: getMatchmakingStatus,
+    refetchInterval: (query) =>
+      query.state.data?.state === "waiting" ? 1_000 : false,
+  });
   const enterMutation = useMutation({
-    mutationFn: (roomId?: string) => roomId === undefined ? createRoom() : joinRoom(roomId),
+    mutationFn: (roomId?: string) =>
+      roomId === undefined ? createRoom() : joinRoom(roomId),
     onSuccess: (room: Room) => {
       void queryClient.invalidateQueries({ queryKey: roomsQueryKey, exact: true });
       void navigate(`/multiplayer/rooms/${room.id}`);
     },
   });
+  const joinMatchmakingMutation = useMutation({
+    mutationFn: joinMatchmaking,
+    onSuccess: (status) => {
+      queryClient.setQueryData(matchmakingQueryKey, status);
+    },
+  });
+  const cancelMatchmakingMutation = useMutation({
+    mutationFn: cancelMatchmaking,
+    onSuccess: (status) => {
+      queryClient.setQueryData(matchmakingQueryKey, status);
+    },
+  });
+
+  const matchmaking = matchmakingQuery.data;
+  useEffect(() => {
+    if (matchmaking?.state === "matched") {
+      void navigate(`/multiplayer/rooms/${matchmaking.roomId}`, { replace: true });
+    }
+  }, [matchmaking, navigate]);
 
   const myRoom = roomsQuery.data?.find((room) =>
     room.participants.some((participant) => participant.userId === user.id));
+  const isWaitingForMatch = matchmaking?.state === "waiting";
+  const isMatchmakingPending =
+    matchmakingQuery.isPending ||
+    joinMatchmakingMutation.isPending ||
+    cancelMatchmakingMutation.isPending;
 
   return (
     <section className={styles.container} aria-labelledby="room-list-title">
@@ -36,11 +73,40 @@ export const RoomListPage = () => {
         </div>
         <button
           type="button"
-          disabled={enterMutation.isPending || myRoom !== undefined}
+          disabled={enterMutation.isPending || myRoom !== undefined || isWaitingForMatch}
           onClick={() => enterMutation.mutate(undefined)}
         >방 만들기</button>
       </header>
+
+      <section className={styles.matchmaking} aria-labelledby="matchmaking-title">
+        <div>
+          <p className={styles.eyebrow}>AUTO MATCH</p>
+          <h2 id="matchmaking-title">자동 매칭</h2>
+          <p>
+            {isWaitingForMatch
+              ? `${matchmaking.waitingPlayers}명이 대기 중입니다. 4명이 모이거나 잠시 기다리면 2~4명으로 방을 만듭니다.`
+              : "대기열에서 2~4명의 참가자를 찾아 같은 방으로 이동합니다."}
+          </p>
+        </div>
+        {isWaitingForMatch ? (
+          <button
+            type="button"
+            disabled={isMatchmakingPending}
+            onClick={() => cancelMatchmakingMutation.mutate()}
+          >매칭 취소</button>
+        ) : (
+          <button
+            type="button"
+            disabled={isMatchmakingPending || myRoom !== undefined}
+            onClick={() => joinMatchmakingMutation.mutate()}
+          >자동 매칭 시작</button>
+        )}
+      </section>
+
       {enterMutation.isError ? <p role="alert" className={styles.error}>{enterMutation.error.message}</p> : null}
+      {matchmakingQuery.isError ? <p role="alert" className={styles.error}>{matchmakingQuery.error.message}</p> : null}
+      {joinMatchmakingMutation.isError ? <p role="alert" className={styles.error}>{joinMatchmakingMutation.error.message}</p> : null}
+      {cancelMatchmakingMutation.isError ? <p role="alert" className={styles.error}>{cancelMatchmakingMutation.error.message}</p> : null}
       {myRoom !== undefined ? (
         <p>이미 참가한 방이 있습니다. <Link to={`/multiplayer/rooms/${myRoom.id}`}>방으로 돌아가기</Link></p>
       ) : null}
@@ -67,7 +133,7 @@ export const RoomListPage = () => {
             ) : (
               <button
                 type="button"
-                disabled={enterMutation.isPending || myRoom !== undefined || room.status !== "waiting" || room.participants.length >= 4}
+                disabled={enterMutation.isPending || myRoom !== undefined || isWaitingForMatch || room.status !== "waiting" || room.participants.length >= 4}
                 onClick={() => enterMutation.mutate(room.id)}
               >입장</button>
             )}

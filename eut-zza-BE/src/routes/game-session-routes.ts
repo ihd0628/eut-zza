@@ -24,6 +24,7 @@ import {
   startSoloGame,
 } from "../services/game-session-service.js";
 import type { MultiplayerGameCoordinator } from "../services/multiplayer-game-coordinator.js";
+import type { LeaderboardService } from "../services/leaderboard-service.js";
 
 type StartSoloGameBody = {
   beatmapId: string;
@@ -35,6 +36,7 @@ type CompleteSoloGameParams = {
 
 type GameSessionRoutesOptions = {
   multiplayerGameCoordinator: MultiplayerGameCoordinator;
+  leaderboardService: LeaderboardService;
 };
 
 const startSoloGameBodySchema = {
@@ -98,7 +100,7 @@ const completeSoloGameBodySchema = {
 
 export const gameSessionRoutes: FastifyPluginAsync<GameSessionRoutesOptions> = async (
   server,
-  { multiplayerGameCoordinator },
+  { multiplayerGameCoordinator, leaderboardService },
 ) => {
   server.get<{ Params: CompleteSoloGameParams }>(
     "/game-sessions/solo/:id/result",
@@ -165,7 +167,7 @@ export const gameSessionRoutes: FastifyPluginAsync<GameSessionRoutesOptions> = a
         const completedGame = await completeSoloGame(user.id, {
           gameSessionId: request.params.id,
           ...request.body,
-        });
+        }, leaderboardService);
 
         return reply.code(200).send(completedGame);
       } catch (error: unknown) {

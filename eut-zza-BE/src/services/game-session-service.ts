@@ -13,6 +13,7 @@ import {
 import { findBeatmapDurationMs } from "../repositories/beatmap-repository.js";
 import { completeSoloGameWithScore, findSoloSavedResult } from "../repositories/score-repository.js";
 import type { RoomStore } from "./room-service.js";
+import type { LeaderboardService } from "./leaderboard-service.js";
 
 export const MULTIPLAYER_START_DELAY_MS = 5_000;
 export const MULTIPLAYER_RESULT_GRACE_MS = 10_000;
@@ -76,8 +77,11 @@ export const startMultiplayerGame = async (
 export const completeSoloGame = async (
   authenticatedUserId: string,
   input: CompleteSoloGameInput,
+  leaderboardService: LeaderboardService,
 ): Promise<CompletedSoloGame> => {
-  return completeSoloGameWithScore(authenticatedUserId, input);
+  const completed = await completeSoloGameWithScore(authenticatedUserId, input);
+  await leaderboardService.refreshForGameSession(completed.gameSession.id);
+  return completed;
 };
 
 export const getSoloSavedResult = async (
