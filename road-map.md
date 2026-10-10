@@ -1244,9 +1244,9 @@ RTT ≈ clientReceivedAt - clientSentAt
 
 왕복 경로가 대칭이라는 보장이 없으므로 이 값은 정확한 진실이 아니라 추정값이다. 한 번의 측정만 믿지 않고 여러 표본의 RTT와 clock offset을 비교하는 이유를 이해한다. 이상치의 영향을 줄이기 위해 최소 RTT 표본이나 중앙값을 사용하는 이유도 학습한다. 별도의 네트워크 진단 UI나 추가 측정 기능은 구현하지 않는다.
 
-### 3단계 — 지연이 게임에 미치는 영향 실험
+### 3단계 — 지연이 게임에 미치는 영향 이해
 
-인위적인 지연과 지터를 적용하여 다음 현상을 관찰한다.
+현재 읏짜의 흐름을 기준으로 지연과 지터가 다음 상태에 미치는 영향을 분석한다. 별도의 인위적 지연 실험 기능은 구현하지 않는다.
 
 - 준비 상태 반영이 늦어지는 현상
 - 경기 시작 메시지가 참가자마다 다른 시점에 도착하는 현상
@@ -1459,9 +1459,9 @@ Redis와 자동 매칭을 추가한 뒤에도 기존 흐름이 유지되는지 �
 - [x] latency, RTT, jitter, packet loss의 차이와 TCP 기반 WebSocket에서 각각이 어떻게 관찰되는지 설명할 수 있다.
 - [x] `performance.now()`와 `Date.now()`의 차이 및 서로 다른 기기의 시계를 그대로 비교하면 안 되는 이유를 설명할 수 있다.
 - [x] 현재 WebSocket 시간 동기화 코드의 RTT 표본과 clock offset 추정 계산을 설명할 수 있다.
-- [ ] 인위적인 지연·지터 환경에서 경기 시작, 실시간 진행 상태, 결과 제출이 어떻게 달라지는지 관찰하고 설명할 수 있다.
-- [ ] Authoritative Server와 Client Prediction의 역할 차이 및 현재 클라이언트 판정 구조의 신뢰 한계를 설명할 수 있다.
-- [ ] Redis가 별도 서버 프로세스라는 것과 Node.js RAM, Redis, PostgreSQL의 역할 차이를 설명할 수 있다.
+- [x] 지연·지터가 경기 시작, 실시간 진행 상태, 결과 제출에 미치는 영향과 현재 대응을 설명할 수 있다.
+- [x] Authoritative Server와 Client Prediction의 역할 차이 및 현재 클라이언트 판정 구조의 신뢰 한계를 설명할 수 있다.
+- [x] Redis가 별도 서버 프로세스라는 것과 Node.js RAM, Redis, PostgreSQL의 역할 차이를 설명할 수 있다.
 - [ ] Redis의 key/value, TTL, Sorted Set, atomic operation을 직접 사용하고 key 생명주기를 설명할 수 있다.
 - [ ] PostgreSQL을 원본으로 유지하면서 Redis leaderboard가 동작하고, 더 낮은 점수·동점·Redis 유실 시 처리 규칙이 적용된다.
 - [ ] 직접 방 생성·입장을 유지하면서 자동 매칭으로도 2~4명이 같은 방·경기 흐름에 진입할 수 있다.
