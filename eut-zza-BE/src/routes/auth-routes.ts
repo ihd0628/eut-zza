@@ -27,6 +27,14 @@ type CredentialsRequestBody = {
   password: string;
 };
 
+const IS_PRODUCTION = process.env.NODE_ENV === "production";
+const SESSION_COOKIE_SECURITY_OPTIONS = {
+  // Railway의 서로 다른 Frontend/Backend Domain 사이에서도 Cookie를 전송한다.
+  // SameSite=None은 Secure가 반드시 함께 필요하므로 운영 HTTPS에서만 사용한다.
+  sameSite: IS_PRODUCTION ? "none" : "lax",
+  secure: IS_PRODUCTION,
+} as const;
+
 const loginBodySchema = {
   type: "object",
   additionalProperties: false,
@@ -108,8 +116,7 @@ export const authRoutes: FastifyPluginAsync<AuthRoutesOptions> = async (
 
         reply.setCookie(SESSION_COOKIE_NAME, sessionToken, {
           httpOnly: true,
-          sameSite: "lax",
-          secure: process.env.NODE_ENV === "production",
+          ...SESSION_COOKIE_SECURITY_OPTIONS,
           path: "/",
           maxAge: SESSION_MAX_AGE_SECONDS,
           expires: expiresAt,
@@ -161,8 +168,7 @@ export const authRoutes: FastifyPluginAsync<AuthRoutesOptions> = async (
     // 생성할 때와 같은 Path를 지정해야 브라우저가 기존 Cookie를 제거한다.
     reply.clearCookie(SESSION_COOKIE_NAME, {
       httpOnly: true,
-      sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
+      ...SESSION_COOKIE_SECURITY_OPTIONS,
       path: "/",
     });
 
