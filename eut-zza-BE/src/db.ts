@@ -17,3 +17,11 @@ export const pool = new pg.Pool({
 pool.on("error", (error: Error) => {
   console.error("[DB] 대기 중인 연결에서 오류 발생", error);
 });
+
+let closeDatabasePromise: Promise<void> | null = null;
+
+// 종료 Signal을 여러 번 받더라도 PostgreSQL Pool 종료는 한 번만 수행한다.
+export const closeDatabase = (): Promise<void> => {
+  closeDatabasePromise ??= pool.end();
+  return closeDatabasePromise;
+};

@@ -1,0 +1,14 @@
+node_modules
+dist
+dist-ssr
+
+.env
+.env.*
+*.local
+
+.git
+.DS_Store
+*.log
+
+.playwright-cli
+output

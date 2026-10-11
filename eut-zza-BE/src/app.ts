@@ -20,9 +20,11 @@ import { LeaderboardService } from "./services/leaderboard-service.js";
 import { RedisMatchmakingQueue } from "./services/matchmaking-queue.js";
 import { MatchmakingService } from "./services/matchmaking-service.js";
 import { closeRedis } from "./redis.js";
+import { closeDatabase } from "./db.js";
 
 const MAX_REQUEST_BODY_BYTES = 16 * 1024;
-const FRONTEND_ORIGIN = "http://localhost:5173";
+const FRONTEND_ORIGIN =
+  process.env.FRONTEND_ORIGIN ?? "http://localhost:5173";
 
 // 애플리케이션의 설정과 Route를 조립하지만 네트워크 포트는 열지 않는다.
 export const buildApp = async (): Promise<FastifyInstance> => {
@@ -50,7 +52,7 @@ export const buildApp = async (): Promise<FastifyInstance> => {
   app.addHook("onClose", async () => {
     multiplayerGameCoordinator.dispose();
     roomPresence.dispose();
-    await closeRedis();
+    await Promise.all([closeRedis(), closeDatabase()]);
   });
 
   // Upgrade 요청을 처리할 수 있도록 다른 Route보다 먼저 등록한다.
