@@ -1,9 +1,14 @@
 import pg from "pg";
 
+const databaseUrl = process.env.DATABASE_URL;
+
 // pg는 ORM이 아니라 PostgreSQL에 SQL을 보내고 결과를 받는 드라이버다.
 // Pool은 DB 연결을 빌려주고 재사용하는 관리자다. SQL 조회 결과를 캐싱하지 않는다.
 // 모듈에서 하나만 생성해 export하므로 요청마다 새로운 Pool을 만들 필요가 없다.
 export const pool = new pg.Pool({
+  // Railway에서는 PostgreSQL Service의 DATABASE_URL을 참조 변수로 전달한다.
+  // 로컬처럼 DATABASE_URL이 없으면 pg가 기존 PGHOST 등의 환경변수를 사용한다.
+  ...(databaseUrl === undefined ? {} : { connectionString: databaseUrl }),
   // PGHOST, PGPORT, PGDATABASE, PGUSER, PGPASSWORD는 pg가 process.env에서 읽는다.
   // npm 실행 명령의 --env-file=.env 옵션이 먼저 .env를 환경변수로 불러온다.
   // 최대 5개이며, 여기서 즉시 5개의 연결을 모두 생성하는 것은 아니다.

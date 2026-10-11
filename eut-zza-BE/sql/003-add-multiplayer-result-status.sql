@@ -1,7 +1,5 @@
 -- 멀티플레이 경기의 서버 종료 시각과 참가자별 결과 상태를 관리한다.
--- 한 번 적용한 DB에는 다시 실행하지 않는다.
-
-BEGIN;
+-- Migration Runner가 이 파일 전체를 하나의 Transaction으로 실행한다.
 
 ALTER TABLE beatmaps
 ADD COLUMN duration_ms INTEGER;
@@ -26,5 +24,3 @@ CHECK (result_status IN ('playing', 'submitted', 'disconnected', 'timed_out'));
 
 ALTER TABLE game_players
 ADD COLUMN finished_at TIMESTAMPTZ;
-
-COMMIT;

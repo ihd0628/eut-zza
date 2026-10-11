@@ -1,7 +1,5 @@
 -- 기존 개발 DB의 game_sessions에 명시적인 플레이 모드를 추가한다.
--- 한 번 적용한 DB에는 다시 실행하지 않는다.
-
-BEGIN;
+-- Migration Runner가 이 파일 전체를 하나의 Transaction으로 실행한다.
 
 ALTER TABLE game_sessions
 ADD COLUMN mode TEXT;
@@ -17,5 +15,3 @@ ALTER COLUMN mode SET NOT NULL;
 ALTER TABLE game_sessions
 ADD CONSTRAINT game_sessions_mode_check
 CHECK (mode IN ('solo', 'multiplayer'));
-
-COMMIT;

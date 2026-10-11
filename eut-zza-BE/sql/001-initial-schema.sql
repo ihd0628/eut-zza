@@ -24,8 +24,6 @@ CREATE TABLE beatmaps (
     CHECK (level BETWEEN 1 AND 100),
   note_count INTEGER NOT NULL
     CHECK (note_count >= 0),
-  duration_ms INTEGER NOT NULL
-    CHECK (duration_ms > 0),
   created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
   UNIQUE (song_id, difficulty)
 );
@@ -33,8 +31,6 @@ CREATE TABLE beatmaps (
 CREATE TABLE game_sessions (
   id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   beatmap_id BIGINT NOT NULL REFERENCES beatmaps(id),
-  mode TEXT NOT NULL
-    CHECK (mode IN ('solo', 'multiplayer')),
   status TEXT NOT NULL DEFAULT 'waiting'
     CHECK (status IN ('waiting', 'playing', 'completed', 'cancelled')),
   created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -46,9 +42,6 @@ CREATE TABLE game_players (
   id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   game_session_id BIGINT NOT NULL REFERENCES game_sessions(id),
   user_id BIGINT NOT NULL REFERENCES users(id),
-  result_status TEXT NOT NULL DEFAULT 'playing'
-    CHECK (result_status IN ('playing', 'submitted', 'disconnected', 'timed_out')),
-  finished_at TIMESTAMPTZ,
   joined_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
   UNIQUE (game_session_id, user_id)
 );
