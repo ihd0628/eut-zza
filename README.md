@@ -1,5 +1,7 @@
 # eut-zza · 읏짜
 
+# [링크](https://frontend-production-6ad0.up.railway.app/login)
+
 > 네 개의 키, 당신만의 리듬. 4 KEYS. ONE RHYTHM.
 
 **읏짜**는 브라우저에서 즐기는 4키 리듬게임입니다. 혼자 최고 기록에 도전하거나, 한 방에서 최대 4명이 같은 곡을 플레이하며 실시간으로 점수를 겨룰 수 있습니다.
@@ -58,13 +60,13 @@
 
 ## 기술 구성
 
-| 영역 | 기술 |
-| --- | --- |
-| Frontend | React, TypeScript, Vite, React Router, TanStack Query, CSS Modules |
-| 게임 엔진 | Canvas 2D, Web Audio API, requestAnimationFrame |
-| Backend | Node.js, Fastify, WebSocket, Argon2 |
-| 데이터 | PostgreSQL, node-postgres, Redis |
-| 배포 | Railway, Docker, Nginx |
+| 영역      | 기술                                                               |
+| --------- | ------------------------------------------------------------------ |
+| Frontend  | React, TypeScript, Vite, React Router, TanStack Query, CSS Modules |
+| 게임 엔진 | Canvas 2D, Web Audio API, requestAnimationFrame                    |
+| Backend   | Node.js, Fastify, WebSocket, Argon2                                |
+| 데이터    | PostgreSQL, node-postgres, Redis                                   |
+| 배포      | Railway, Docker, Nginx                                             |
 
 React는 화면 이동과 UI를, 게임 엔진은 프레임 단위의 플레이를 담당합니다. WebSocket의 중간 점수 공유와 HTTP의 최종 결과 저장은 별도 책임으로 나눴습니다.
 
