@@ -13,25 +13,30 @@ import type { RoomContext } from "./RoomBoundary";
 import styles from "./RoomLobbyPage.module.css";
 
 export const RoomLobbyPage = () => {
-  const {
-    room,
-    user,
-    prepareAudio,
-    getPreparedAudioManager,
-  } = useOutletContext<RoomContext>();
+  const { room, user, prepareAudio, getPreparedAudioManager } =
+    useOutletContext<RoomContext>();
   const queryClient = useQueryClient();
   const isHost = room.hostUserId === user.id;
-  const me = room.participants.find((participant) => participant.userId === user.id);
-  const allReady = room.participants.length > 0 && room.participants.every((participant) => participant.isReady);
+  const me = room.participants.find(
+    (participant) => participant.userId === user.id,
+  );
+  const allReady =
+    room.participants.length > 0 &&
+    room.participants.every((participant) => participant.isReady);
   const songsQuery = useQuery({ queryKey: songsQueryKey, queryFn: getSongs });
   const selectedSong = songsQuery.data?.find((song) =>
-    song.beatmaps.some((beatmap) => beatmap.id === room.selectedBeatmapId));
-  const selectedBeatmap = selectedSong?.beatmaps.find((beatmap) =>
-    beatmap.id === room.selectedBeatmapId);
-  const allAudioPrepared = room.selectedBeatmapId !== null && room.participants.every(
-    (participant) => participant.preparedBeatmapId === room.selectedBeatmapId,
+    song.beatmaps.some((beatmap) => beatmap.id === room.selectedBeatmapId),
   );
-  const canStart = room.selectedBeatmapId !== null &&
+  const selectedBeatmap = selectedSong?.beatmaps.find(
+    (beatmap) => beatmap.id === room.selectedBeatmapId,
+  );
+  const allAudioPrepared =
+    room.selectedBeatmapId !== null &&
+    room.participants.every(
+      (participant) => participant.preparedBeatmapId === room.selectedBeatmapId,
+    );
+  const canStart =
+    room.selectedBeatmapId !== null &&
     room.participants.length >= 2 &&
     allReady &&
     allAudioPrepared;
@@ -42,16 +47,20 @@ export const RoomLobbyPage = () => {
     },
   });
   const readyMutation = useMutation({
-    mutationFn: ({ beatmapId, ready }: {
-      beatmapId: string;
-      ready: boolean;
-    }) => setRoomReady(room.id, beatmapId, ready),
+    mutationFn: ({ beatmapId, ready }: { beatmapId: string; ready: boolean }) =>
+      setRoomReady(room.id, beatmapId, ready),
     onSuccess: (updatedRoom) => {
       queryClient.setQueryData(roomQueryKey(room.id), updatedRoom);
     },
   });
   const audioPreparationMutation = useMutation({
-    mutationFn: async ({ beatmapId, audioUrl }: { beatmapId: string; audioUrl: string }) => {
+    mutationFn: async ({
+      beatmapId,
+      audioUrl,
+    }: {
+      beatmapId: string;
+      audioUrl: string;
+    }) => {
       await prepareAudio(beatmapId, audioUrl);
       return markRoomAudioPrepared(room.id, beatmapId);
     },
@@ -104,17 +113,18 @@ export const RoomLobbyPage = () => {
 
   return (
     <section className={styles.container} aria-labelledby="room-title">
-      <nav><Link to="/multiplayer/rooms">← 방 나가기</Link></nav>
-      <p className={styles.eyebrow}>MULTIPLAYER ROOM</p>
-      <h1 id="room-title">방 #{room.id.slice(0, 8)}</h1>
+      <nav>
+        <Link to="/multiplayer/rooms">← 방 나가기</Link>
+      </nav>
+      <p className={styles.eyebrow}>MULTIPLAYER / ROOM {room.id.slice(0, 8)}</p>
+      <h1 id="room-title">GET READY.</h1>
       <p>
-        참가 인원 {room.participants.length}/4명{" · "}{
-          room.status === "waiting"
-            ? "대기 중"
-            : room.status === "starting"
-              ? "경기 생성 중"
-              : "진행 중"
-        }
+        참가 인원 {room.participants.length}/4명{" · "}
+        {room.status === "waiting"
+          ? "대기 중"
+          : room.status === "starting"
+            ? "경기 생성 중"
+            : "진행 중"}
       </p>
 
       <section className={styles.selection} aria-labelledby="selection-title">
@@ -132,12 +142,21 @@ export const RoomLobbyPage = () => {
             <select
               className={styles.select}
               value={room.selectedBeatmapId ?? ""}
-              disabled={allReady || room.status !== "waiting" || songsQuery.isPending || songsQuery.isError || selectionMutation.isPending}
+              disabled={
+                allReady ||
+                room.status !== "waiting" ||
+                songsQuery.isPending ||
+                songsQuery.isError ||
+                selectionMutation.isPending
+              }
               onChange={(event) => {
-                if (event.target.value !== "") selectionMutation.mutate(event.target.value);
+                if (event.target.value !== "")
+                  selectionMutation.mutate(event.target.value);
               }}
             >
-              <option value="" disabled>곡과 난이도를 선택하세요</option>
+              <option value="" disabled>
+                곡과 난이도를 선택하세요
+              </option>
               {songsQuery.data?.map((song) => (
                 <optgroup key={song.id} label={song.title}>
                   {song.beatmaps.map((beatmap) => (
@@ -150,18 +169,42 @@ export const RoomLobbyPage = () => {
             </select>
           </label>
         ) : null}
-        {allReady ? <p className={styles.note}>전원이 준비해 방장이 채보를 변경할 수 없습니다.</p> : null}
-        {songsQuery.isError ? <p className={styles.error} role="alert">곡 목록을 불러오지 못했습니다: {songsQuery.error.message}</p> : null}
-        {selectionMutation.isError ? <p className={styles.error} role="alert">{selectionMutation.error.message}</p> : null}
+        {allReady ? (
+          <p className={styles.note}>
+            전원이 준비해 방장이 채보를 변경할 수 없습니다.
+          </p>
+        ) : null}
+        {songsQuery.isError ? (
+          <p className={styles.error} role="alert">
+            곡 목록을 불러오지 못했습니다: {songsQuery.error.message}
+          </p>
+        ) : null}
+        {selectionMutation.isError ? (
+          <p className={styles.error} role="alert">
+            {selectionMutation.error.message}
+          </p>
+        ) : null}
       </section>
 
       <section className={styles.readySection} aria-labelledby="ready-title">
-        <h2 id="ready-title">참가자 준비 상태</h2>
+        <h2 id="ready-title">
+          PLAYER SLOTS <span>{room.participants.length} / 4</span>
+        </h2>
         <ol className={styles.participants}>
-          {room.participants.map((participant) => (
-            <li key={participant.userId}>
-              <strong>{participant.userId === user.id ? "나" : `플레이어 ${participant.userId}`}</strong>
-              {participant.userId === room.hostUserId ? <span className={styles.host}>방장</span> : null}
+          {room.participants.map((participant, index) => (
+            <li
+              key={participant.userId}
+              className={participant.isReady ? styles.isReady : undefined}
+            >
+              <span className={styles.slotNumber}>P{index + 1}</span>
+              <strong>
+                {participant.userId === user.id
+                  ? "나"
+                  : `플레이어 ${participant.userId}`}
+              </strong>
+              {participant.userId === room.hostUserId ? (
+                <span className={styles.host}>방장</span>
+              ) : null}
               <span>{participant.isReady ? "준비 완료" : "준비 전"}</span>
               <span>
                 {room.selectedBeatmapId !== null &&
@@ -171,6 +214,18 @@ export const RoomLobbyPage = () => {
               </span>
             </li>
           ))}
+          {Array.from(
+            { length: Math.max(0, 4 - room.participants.length) },
+            (_, index) => (
+              <li className={styles.emptySlot} key={`empty-${index}`}>
+                <span className={styles.slotNumber}>
+                  P{room.participants.length + index + 1}
+                </span>
+                <strong>WAITING</strong>
+                <span>참가자를 기다리고 있습니다</span>
+              </li>
+            ),
+          )}
         </ol>
         <button
           className={styles.readyButton}
@@ -199,12 +254,15 @@ export const RoomLobbyPage = () => {
               }
 
               const beatmapId = room.selectedBeatmapId;
-              void audioPreparationMutation.mutateAsync({
-                beatmapId,
-                audioUrl: selectedSong.audioUrl,
-              })
+              void audioPreparationMutation
+                .mutateAsync({
+                  beatmapId,
+                  audioUrl: selectedSong.audioUrl,
+                })
                 .then(() => readyMutation.mutate({ beatmapId, ready: true }))
-                .catch(() => { /* Mutation의 error 상태를 화면에 표시한다. */ });
+                .catch(() => {
+                  /* Mutation의 error 상태를 화면에 표시한다. */
+                });
             }
           }}
         >
@@ -224,16 +282,26 @@ export const RoomLobbyPage = () => {
             className={styles.readyButton}
             type="button"
             disabled={audioPreparationMutation.isPending}
-            onClick={() => audioPreparationMutation.mutate({
-              beatmapId: room.selectedBeatmapId!,
-              audioUrl: selectedSong.audioUrl,
-            })}
+            onClick={() =>
+              audioPreparationMutation.mutate({
+                beatmapId: room.selectedBeatmapId!,
+                audioUrl: selectedSong.audioUrl,
+              })
+            }
           >
             음원 다시 준비
           </button>
         ) : null}
-        {readyMutation.isError ? <p className={styles.error} role="alert">{readyMutation.error.message}</p> : null}
-        {audioPreparationMutation.isError ? <p className={styles.error} role="alert">{audioPreparationMutation.error.message}</p> : null}
+        {readyMutation.isError ? (
+          <p className={styles.error} role="alert">
+            {readyMutation.error.message}
+          </p>
+        ) : null}
+        {audioPreparationMutation.isError ? (
+          <p className={styles.error} role="alert">
+            {audioPreparationMutation.error.message}
+          </p>
+        ) : null}
         {isHost ? (
           <button
             className={styles.startButton}
@@ -244,7 +312,11 @@ export const RoomLobbyPage = () => {
             {startMutation.isPending ? "경기 생성 중..." : "멀티플레이 시작"}
           </button>
         ) : null}
-        {startMutation.isError ? <p className={styles.error} role="alert">{startMutation.error.message}</p> : null}
+        {startMutation.isError ? (
+          <p className={styles.error} role="alert">
+            {startMutation.error.message}
+          </p>
+        ) : null}
         <p className={styles.note}>
           {canStart
             ? "전원의 준비가 끝났습니다. 방장이 게임을 시작할 수 있습니다."
@@ -257,7 +329,9 @@ export const RoomLobbyPage = () => {
                   : "모든 참가자의 음원 다운로드와 디코딩을 기다리고 있습니다."}
         </p>
       </section>
-      <p className={styles.note}>새로고침 후에도 같은 방으로 돌아옵니다. 화면을 벗어나면 퇴장합니다.</p>
+      <p className={styles.note}>
+        새로고침 후에도 같은 방으로 돌아옵니다. 화면을 벗어나면 퇴장합니다.
+      </p>
     </section>
   );
 };

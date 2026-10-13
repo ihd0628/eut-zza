@@ -30,7 +30,10 @@ export const RoomListPage = () => {
     mutationFn: (roomId?: string) =>
       roomId === undefined ? createRoom() : joinRoom(roomId),
     onSuccess: (room: Room) => {
-      void queryClient.invalidateQueries({ queryKey: roomsQueryKey, exact: true });
+      void queryClient.invalidateQueries({
+        queryKey: roomsQueryKey,
+        exact: true,
+      });
       void navigate(`/multiplayer/rooms/${room.id}`);
     },
   });
@@ -50,12 +53,15 @@ export const RoomListPage = () => {
   const matchmaking = matchmakingQuery.data;
   useEffect(() => {
     if (matchmaking?.state === "matched") {
-      void navigate(`/multiplayer/rooms/${matchmaking.roomId}`, { replace: true });
+      void navigate(`/multiplayer/rooms/${matchmaking.roomId}`, {
+        replace: true,
+      });
     }
   }, [matchmaking, navigate]);
 
   const myRoom = roomsQuery.data?.find((room) =>
-    room.participants.some((participant) => participant.userId === user.id));
+    room.participants.some((participant) => participant.userId === user.id),
+  );
   const isWaitingForMatch = matchmaking?.state === "waiting";
   const isMatchmakingPending =
     matchmakingQuery.isPending ||
@@ -64,21 +70,30 @@ export const RoomListPage = () => {
 
   return (
     <section className={styles.container} aria-labelledby="room-list-title">
-      <nav className={styles.navigation}><Link to="/">← 모드 선택으로</Link></nav>
+      <nav className={styles.navigation}>
+        <Link to="/">← 모드 선택으로</Link>
+      </nav>
       <header className={styles.header}>
         <div>
           <p className={styles.eyebrow}>MULTIPLAYER</p>
-          <h1 id="room-list-title">대기 중인 방</h1>
+          <h1 id="room-list-title">BATTLE LOBBY</h1>
           <p>방을 만들거나 입장해 최대 4명이 함께 플레이할 수 있습니다.</p>
         </div>
         <button
           type="button"
-          disabled={enterMutation.isPending || myRoom !== undefined || isWaitingForMatch}
+          disabled={
+            enterMutation.isPending || myRoom !== undefined || isWaitingForMatch
+          }
           onClick={() => enterMutation.mutate(undefined)}
-        >방 만들기</button>
+        >
+          방 만들기
+        </button>
       </header>
 
-      <section className={styles.matchmaking} aria-labelledby="matchmaking-title">
+      <section
+        className={styles.matchmaking}
+        aria-labelledby="matchmaking-title"
+      >
         <div>
           <p className={styles.eyebrow}>AUTO MATCH</p>
           <h2 id="matchmaking-title">자동 매칭</h2>
@@ -93,26 +108,59 @@ export const RoomListPage = () => {
             type="button"
             disabled={isMatchmakingPending}
             onClick={() => cancelMatchmakingMutation.mutate()}
-          >매칭 취소</button>
+          >
+            매칭 취소
+          </button>
         ) : (
           <button
             type="button"
             disabled={isMatchmakingPending || myRoom !== undefined}
             onClick={() => joinMatchmakingMutation.mutate()}
-          >자동 매칭 시작</button>
+          >
+            자동 매칭 시작
+          </button>
         )}
       </section>
 
-      {enterMutation.isError ? <p role="alert" className={styles.error}>{enterMutation.error.message}</p> : null}
-      {matchmakingQuery.isError ? <p role="alert" className={styles.error}>{matchmakingQuery.error.message}</p> : null}
-      {joinMatchmakingMutation.isError ? <p role="alert" className={styles.error}>{joinMatchmakingMutation.error.message}</p> : null}
-      {cancelMatchmakingMutation.isError ? <p role="alert" className={styles.error}>{cancelMatchmakingMutation.error.message}</p> : null}
+      {enterMutation.isError ? (
+        <p role="alert" className={styles.error}>
+          {enterMutation.error.message}
+        </p>
+      ) : null}
+      {matchmakingQuery.isError ? (
+        <p role="alert" className={styles.error}>
+          {matchmakingQuery.error.message}
+        </p>
+      ) : null}
+      {joinMatchmakingMutation.isError ? (
+        <p role="alert" className={styles.error}>
+          {joinMatchmakingMutation.error.message}
+        </p>
+      ) : null}
+      {cancelMatchmakingMutation.isError ? (
+        <p role="alert" className={styles.error}>
+          {cancelMatchmakingMutation.error.message}
+        </p>
+      ) : null}
       {myRoom !== undefined ? (
-        <p>이미 참가한 방이 있습니다. <Link to={`/multiplayer/rooms/${myRoom.id}`}>방으로 돌아가기</Link></p>
+        <p>
+          이미 참가한 방이 있습니다.{" "}
+          <Link to={`/multiplayer/rooms/${myRoom.id}`}>방으로 돌아가기</Link>
+        </p>
       ) : null}
       {roomsQuery.isPending ? <p>방 목록을 불러오고 있습니다.</p> : null}
-      {roomsQuery.isError ? <p role="alert" className={styles.error}>{roomsQuery.error.message}</p> : null}
-      {roomsQuery.data?.length === 0 ? <p>아직 방이 없습니다. 첫 방을 만들어 보세요.</p> : null}
+      {roomsQuery.isError ? (
+        <p role="alert" className={styles.error}>
+          {roomsQuery.error.message}
+        </p>
+      ) : null}
+      {roomsQuery.data?.length === 0 ? (
+        <p>아직 방이 없습니다. 첫 방을 만들어 보세요.</p>
+      ) : null}
+      <div className={styles.listHeading}>
+        <span>ROOM / 참가할 방 선택</span>
+        <span>최대 4인 대전</span>
+      </div>
       <ul className={styles.rooms}>
         {roomsQuery.data?.map((room) => (
           <li key={room.id} className={styles.room}>
@@ -125,7 +173,8 @@ export const RoomListPage = () => {
                     ? "시작 중"
                     : room.status === "playing"
                       ? "진행 중"
-                      : "경기 종료"} · {room.participants.length}/4명
+                      : "경기 종료"}{" "}
+                · {room.participants.length}/4명
               </p>
             </div>
             {myRoom?.id === room.id ? (
@@ -133,9 +182,17 @@ export const RoomListPage = () => {
             ) : (
               <button
                 type="button"
-                disabled={enterMutation.isPending || myRoom !== undefined || isWaitingForMatch || room.status !== "waiting" || room.participants.length >= 4}
+                disabled={
+                  enterMutation.isPending ||
+                  myRoom !== undefined ||
+                  isWaitingForMatch ||
+                  room.status !== "waiting" ||
+                  room.participants.length >= 4
+                }
                 onClick={() => enterMutation.mutate(room.id)}
-              >입장</button>
+              >
+                입장
+              </button>
             )}
           </li>
         ))}

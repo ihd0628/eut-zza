@@ -69,8 +69,7 @@ export class CanvasRenderer {
    * 먼 미래의 노트를 렌더링 대상에서 제외한다.
    */
   getNoteRenderLookaheadMs(): number {
-    const judgmentLineY =
-      this.canvas.height - JUDGMENT_LINE_BOTTOM_OFFSET;
+    const judgmentLineY = this.canvas.height - JUDGMENT_LINE_BOTTOM_OFFSET;
 
     return (judgmentLineY + NOTE_HEIGHT / 2) / NOTE_SPEED_PX_PER_MS;
   }
@@ -85,7 +84,7 @@ export class CanvasRenderer {
   /** Canvas 전체를 게임판의 기본 배경색으로 채운다. */
   private drawBackground(): void {
     // fillStyle은 이후 실행되는 채우기 명령이 사용할 색상을 정한다.
-    this.context.fillStyle = "#111827";
+    this.context.fillStyle = "#080a10";
 
     // fillRect(x, y, width, height)는 지정한 영역을 현재 fillStyle로 채운다.
     this.context.fillRect(0, 0, this.canvas.width, this.canvas.height);
@@ -104,8 +103,8 @@ export class CanvasRenderer {
 
       this.context.fillStyle =
         laneIndex % 2 === 0
-          ? "rgba(255, 255, 255, 0.03)"
-          : "rgba(255, 255, 255, 0.07)";
+          ? "rgba(122, 117, 178, 0.05)"
+          : "rgba(122, 117, 178, 0.12)";
       this.context.fillRect(laneX, 0, laneWidth, this.canvas.height);
     }
 
@@ -113,7 +112,7 @@ export class CanvasRenderer {
     // 즉, 이전 경로 정보를 비운다.
     this.context.beginPath();
     // 사용할 펜의 색상을 설정한다.
-    this.context.strokeStyle = "#4b5563";
+    this.context.strokeStyle = "#343644";
     // 사용할 펜의 두께를 설정한다.
     this.context.lineWidth = 1;
 
@@ -145,7 +144,7 @@ export class CanvasRenderer {
     const judgmentLineY = this.canvas.height - JUDGMENT_LINE_BOTTOM_OFFSET;
 
     this.context.beginPath();
-    this.context.strokeStyle = "#facc15";
+    this.context.strokeStyle = "#edff80";
     this.context.lineWidth = 4;
 
     // 판정선은 Canvas의 왼쪽 끝에서 오른쪽 끝까지 이어지는 가로선이다.
@@ -168,7 +167,7 @@ export class CanvasRenderer {
     // Canvas Context는 이 설정을 계속 기억한다. 따라서 글자를 그리기 전에 다시 밝은 색으로 변경해야 한다.
     this.context.fillStyle = "#f9fafb";
     // 글자의 모양을 설정한다. CSS의 font 작성 방식과 거의 같다.
-    this.context.font = "bold 28px sans-serif";
+    this.context.font = "bold 28px monospace";
     // fillText()에 전달하는 x 좌표를 기준으로 글자를 수평 방향에서 어떻게 배치할지 정한다
     this.context.textAlign = "center";
     // fillText()에 전달하는 y 좌표를 기준으로 글자를 수직 방향에서 어떻게 배치할지 정한다.
@@ -200,8 +199,13 @@ export class CanvasRenderer {
     // 좌우 여백만큼 노트 너비를 줄인다.
     const noteWidth = laneWidth - NOTE_HORIZONTAL_PADDING * 2;
 
-    this.context.fillStyle = "#38bdf8";
+    // 두 손의 레인을 구분하되 모든 노트의 크기·속도·판정 좌표는 그대로 유지한다.
+    this.context.fillStyle = laneIndex % 2 === 0 ? "#c1bfd4" : "#9689ee";
     this.context.fillRect(noteX, noteY, noteWidth, NOTE_HEIGHT);
+    this.context.fillStyle = laneIndex % 2 === 0 ? "#f4f1ff" : "#dcd4ff";
+    this.context.fillRect(noteX, noteY, noteWidth, 4);
+    this.context.fillStyle = "#00000055";
+    this.context.fillRect(noteX, noteY + NOTE_HEIGHT - 5, noteWidth, 5);
   }
 
   private drawNotes(notes: readonly Note[], currentTimeMs: number): void {

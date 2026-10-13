@@ -1,1 +1,6 @@
-.error { color: #dc2626; }
+.error {
+  color: var(--error);
+  padding: 12px;
+  border: 1px solid var(--error);
+  font-size: 13px;
+}

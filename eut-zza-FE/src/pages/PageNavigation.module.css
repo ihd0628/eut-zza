@@ -1,14 +1,15 @@
 .navigation {
   display: flex;
-  gap: 10px;
-  padding: 20px 0;
+  flex-wrap: wrap;
+  gap: 24px;
+  margin-bottom: 28px;
 }
 .link {
-  padding: 9px 14px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  color: var(--text-h);
-  background: var(--bg);
+  font-size: 12px;
+  color: var(--text);
   text-decoration: none;
+  padding: 4px 0;
 }
-.link:hover { border-color: var(--accent-border); color: var(--accent); }
+.link:hover {
+  color: var(--yellow);
+}

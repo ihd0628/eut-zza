@@ -1,14 +1,10 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
 import { useLocation, useNavigate } from "react-router";
-import {
-  login,
-  signUp,
-  type Credentials,
-  type User,
-} from "../api/auth-api";
+import { login, signUp, type Credentials, type User } from "../api/auth-api";
 import { currentUserQueryKey } from "../query/query-keys";
 import styles from "./AuthPanel.module.css";
+import { RecordArtwork } from "./RecordArtwork";
 
 type AuthMode = "login" | "signup";
 
@@ -24,11 +20,7 @@ export const AuthPanel = ({ mode }: { mode: AuthMode }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  const authenticationMutation = useMutation<
-    User,
-    Error,
-    AuthenticationInput
-  >({
+  const authenticationMutation = useMutation<User, Error, AuthenticationInput>({
     mutationFn: async ({ mode: requestedMode, credentials }) => {
       if (requestedMode === "signup") {
         await signUp(credentials);
@@ -39,9 +31,12 @@ export const AuthPanel = ({ mode }: { mode: AuthMode }) => {
     onSuccess: (user) => {
       queryClient.setQueryData(currentUserQueryKey, user);
       const from = (location.state as { from?: string } | null)?.from;
-      void navigate(from?.startsWith("/") && !from.startsWith("//") ? from : "/", {
-        replace: true,
-      });
+      void navigate(
+        from?.startsWith("/") && !from.startsWith("//") ? from : "/",
+        {
+          replace: true,
+        },
+      );
     },
   });
 
@@ -63,10 +58,25 @@ export const AuthPanel = ({ mode }: { mode: AuthMode }) => {
 
   return (
     <main className={styles.page}>
+      <section className={styles.identity} aria-label="읏짜 리듬 아케이드">
+        <span className={styles.systemLabel}>4 KEY ONLINE RHYTHM ARCADE</span>
+        <p className={styles.wordmark}>
+          eut-zza<span>읏짜</span>
+        </p>
+        <h2>
+          FIND YOUR
+          <br />
+          <span>RHYTHM.</span>
+        </h2>
+        <div className={styles.artwork}>
+          <RecordArtwork />
+        </div>
+        <p className={styles.identityFooter}>SOLO PLAY / MULTIPLAYER BATTLE</p>
+      </section>
       <section className={styles.card} aria-labelledby="auth-title">
-        <p className={styles.productName}>eut-zza · 읏짜</p>
+        <p className={styles.productName}>PLAYER ACCESS / 01</p>
         <h1 className={styles.title} id="auth-title">
-          {mode === "login" ? "로그인" : "회원가입"}
+          {mode === "login" ? "WELCOME BACK." : "NEW PLAYER."}
         </h1>
         <p className={styles.description}>
           {mode === "login"

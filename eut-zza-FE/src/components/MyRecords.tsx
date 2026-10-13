@@ -1,9 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { getMyBestScores, getMyScores } from "../api/user-api";
-import {
-  myBestScoresQueryKey,
-  myScoresQueryKey,
-} from "../query/query-keys";
+import { myBestScoresQueryKey, myScoresQueryKey } from "../query/query-keys";
 import styles from "./MyRecords.module.css";
 
 const formatScore = (score: number): string => score.toLocaleString("ko-KR");
@@ -49,14 +46,17 @@ export const MyRecords = () => {
       <header className={styles.header}>
         <p className={styles.eyebrow}>MY RECORDS</p>
         <h1 id="my-records-title" className={styles.title}>
-          내 게임 기록
+          MY RECORDS
         </h1>
         <p className={styles.description}>
           곡·난이도별 최고 점수와 최근 20번의 플레이를 확인할 수 있습니다.
         </p>
       </header>
 
-      <section className={styles.recordSection} aria-labelledby="best-scores-title">
+      <section
+        className={styles.recordSection}
+        aria-labelledby="best-scores-title"
+      >
         <h2 id="best-scores-title" className={styles.sectionTitle}>
           최고 점수
         </h2>
@@ -84,12 +84,17 @@ export const MyRecords = () => {
         )}
       </section>
 
-      <section className={styles.recordSection} aria-labelledby="recent-scores-title">
+      <section
+        className={styles.recordSection}
+        aria-labelledby="recent-scores-title"
+      >
         <h2 id="recent-scores-title" className={styles.sectionTitle}>
           최근 기록
         </h2>
         {scoresQuery.data.length === 0 ? (
-          <p className={styles.emptyState}>아직 저장된 플레이 기록이 없습니다.</p>
+          <p className={styles.emptyState}>
+            아직 저장된 플레이 기록이 없습니다.
+          </p>
         ) : (
           <div className={styles.tableWrapper}>
             <table className={styles.scoreTable}>

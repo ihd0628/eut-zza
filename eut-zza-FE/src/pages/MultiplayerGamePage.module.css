@@ -1,75 +1,160 @@
 .container {
-  display: grid;
-  gap: 12px;
-  max-width: 760px;
-  margin: 20px auto;
+  min-width: 0;
 }
-
-.eyebrow {
+.container > h1,
+.container > p,
+.container > button {
+  margin: 24px;
+}
+.progressPanel h2 {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+  font: 11px var(--mono);
+  letter-spacing: 0.03em;
+  border-bottom: 2px solid var(--border);
+  padding: 14px 0;
+  margin: 0 0 24px;
+}
+.progressPanel h2 span {
+  color: var(--yellow);
+  font: 10px var(--sans);
+}
+.progressList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.progressList li {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: var(--surface);
+  padding: 18px 14px;
+  border: 1px solid var(--border);
+  margin-bottom: 10px;
+}
+.progressList li.me {
+  border-color: var(--accent);
+  background: #28243b;
+  box-shadow: inset 3px 0 var(--accent);
+}
+.rank {
+  font: italic 32px var(--display);
+  color: var(--text);
+  min-width: 18px;
+}
+.me .rank {
+  color: var(--yellow);
+}
+.progressList li > div {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+.progressList strong {
+  font: 10px var(--mono);
+  color: var(--text);
+}
+.me strong {
   color: var(--accent);
-  font-weight: 800;
-  letter-spacing: .15em;
 }
-
-.container h1,
-.container h2 {
-  color: var(--text-h);
+.playerScore {
+  font: 700 24px var(--mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.04em;
 }
-
-.actionButton {
-  width: fit-content;
-  padding: 10px 16px;
-  border: 1px solid var(--accent-border);
-  border-radius: 8px;
-  background: var(--accent);
-  color: white;
-  cursor: pointer;
+.progressList small {
+  font: 9px var(--mono);
+  color: var(--text);
 }
-
-.actionButton:disabled {
-  cursor: wait;
-  opacity: .6;
+.liveNote {
+  font-size: 11px;
+  color: var(--text);
+  line-height: 1.8;
+  margin-top: 22px;
 }
-
 .result {
-  padding: 20px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-}
-
-.progressPanel {
-  display: grid;
-  gap: 10px;
-  padding: 16px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
+  max-width: 760px;
+  margin: 10vh auto;
+  padding: 40px;
+  border: 1px solid var(--accent);
   background: var(--surface);
 }
-
-.progressList {
-  display: grid;
-  gap: 8px;
-  padding: 0;
-  margin: 0;
-  list-style: none;
+.result h2 {
+  font: italic 42px var(--display);
 }
-
-.progressList li {
-  display: grid;
-  grid-template-columns: minmax(120px, 1fr) repeat(3, auto);
-  gap: 12px;
-  align-items: center;
-  padding: 10px 12px;
-  border-radius: 8px;
-  border: 1px solid var(--border);
+.result > p:first-of-type {
+  font: 700 38px var(--mono);
+  color: var(--yellow);
 }
-
-@media (max-width: 560px) {
+.actionButton {
+  padding: 14px 24px;
+  border: 1px solid var(--yellow);
+  color: #131411;
+  background: var(--yellow);
+  font-weight: 700;
+}
+.actionButton:disabled {
+  opacity: 0.5;
+}
+.error {
+  color: var(--error);
+}
+@media (max-width: 850px) {
   .progressList li {
-    grid-template-columns: 1fr 1fr;
+    gap: 9px;
+    padding: 14px 10px;
+  }
+  .playerScore {
+    font-size: 20px;
+  }
+  .progressPanel h2 {
+    flex-wrap: wrap;
   }
 }
-
-.error {
-  color: #dc2626;
+@media (max-width: 650px) {
+  .progressPanel h2 {
+    font-size: 9px;
+    margin-bottom: 12px;
+    padding: 8px 0;
+  }
+  .progressList li {
+    gap: 7px;
+    padding: 12px 7px;
+  }
+  .rank {
+    font-size: 24px;
+    min-width: 12px;
+  }
+  .playerScore {
+    font-size: 15px;
+  }
+  .progressList strong,
+  .progressList small {
+    font-size: 8px;
+  }
+  .liveNote {
+    font-size: 9px;
+  }
+  .result {
+    margin: 24px 12px;
+    padding: 24px;
+  }
+  .result > p:first-of-type {
+    font-size: 28px;
+  }
+}
+@media (max-height: 650px) {
+  .progressList li {
+    padding: 9px 7px;
+    margin-bottom: 7px;
+  }
+  .progressPanel h2 {
+    margin-bottom: 12px;
+  }
+  .liveNote {
+    margin-top: 12px;
+  }
 }

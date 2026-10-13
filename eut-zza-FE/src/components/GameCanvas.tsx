@@ -1,7 +1,16 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
+import { Link } from "react-router";
 import { SAMPLE_NOTES } from "../constants";
 import type { AudioManager } from "../game/AudioManager";
 import { GameEngine } from "../game/GameEngine";
+import { CanvasRenderer } from "../game/CanvasRenderer";
+import { RecordArtwork } from "./RecordArtwork";
 import type { GameProgress, GameResult } from "../game/types";
 import styles from "./GameCanvas.module.css";
 
@@ -14,9 +23,12 @@ const CANVAS_HEIGHT = 720;
  * React에서 실제 <canvas> DOM 요소를 만들고 CanvasRenderer에 전달하는 컴포넌트다.
  *
  * 이 컴포넌트는 "어떻게 그릴지"를 알지 않는다.
- * Canvas DOM의 생성과 생명주기만 관리하고, 그리기 책임은 CanvasRenderer에 위임한다.
+ * Canvas DOM의 생명주기와 주변 HUD를 관리하고, 그리기 책임은 CanvasRenderer에 위임한다.
  */
 type GameCanvasProps = {
+  songTitle: string;
+  difficulty: string;
+  sidePanel?: ReactNode;
   audioUrl: string;
   onCreateGame: () => Promise<void>;
   onComplete: (result: GameResult) => void;
@@ -36,6 +48,9 @@ const getErrorMessage = (error: unknown): string => {
 };
 
 export const GameCanvas = ({
+  songTitle,
+  difficulty,
+  sidePanel,
   audioUrl,
   onCreateGame,
   onComplete,
@@ -51,6 +66,18 @@ export const GameCanvas = ({
   const mountedRef = useRef(false);
   const [startStatus, setStartStatus] = useState<StartStatus>("idle");
   const [startError, setStartError] = useState<string | null>(null);
+  const [progress, setProgress] = useState<GameProgress>({
+    score: 0,
+    combo: 0,
+  });
+  // HUD는 판정이 발생할 때만 갱신한다. 매 프레임의 노트 이동은 여전히 Canvas가 담당한다.
+  const handleProgress = useCallback(
+    (next: GameProgress) => {
+      setProgress(next);
+      onProgress?.(next);
+    },
+    [onProgress],
+  );
 
   const handleStart = useCallback(async (): Promise<void> => {
     const canvas = canvasRef.current;
@@ -83,7 +110,7 @@ export const GameCanvas = ({
         onComplete(result);
       },
       audioManager,
-      onProgress,
+      handleProgress,
     );
 
     gameEngineRef.current = gameEngine;
@@ -99,9 +126,8 @@ export const GameCanvas = ({
         return;
       }
 
-      const delayMs = startAtClientMs === undefined
-        ? 0
-        : startAtClientMs - Date.now();
+      const delayMs =
+        startAtClientMs === undefined ? 0 : startAtClientMs - Date.now();
       gameEngine.start(delayMs);
       setStartStatus("running");
     } catch (error: unknown) {
@@ -117,10 +143,20 @@ export const GameCanvas = ({
         setStartError(getErrorMessage(error));
       }
     }
-  }, [audioManager, audioUrl, onComplete, onCreateGame, onProgress, startAtClientMs]);
+  }, [
+    audioManager,
+    audioUrl,
+    onComplete,
+    onCreateGame,
+    handleProgress,
+    startAtClientMs,
+  ]);
 
   useEffect(() => {
     mountedRef.current = true;
+    if (canvasRef.current !== null) {
+      new CanvasRenderer(canvasRef.current).render([], 0);
+    }
 
     return () => {
       mountedRef.current = false;
@@ -147,42 +183,112 @@ export const GameCanvas = ({
   }, [handleStart, startAtClientMs]);
 
   return (
-    <section className={styles.container}>
-      <button
-        className={styles.startButton}
-        type="button"
-        disabled={startAtClientMs !== undefined || startStatus !== "idle"}
-        onClick={() => {
-          void handleStart();
-        }}
-      >
-        {startStatus === "starting"
-          ? "게임 준비 중..."
-          : startStatus === "running"
-            ? "게임 진행 중"
-            : startStatus === "completed"
-              ? "게임 완료"
-              : startAtClientMs !== undefined
-                ? "동기화된 시작 대기 중"
-            : "게임 시작"}
-      </button>
-      {startError === null ? null : (
-        <p className={styles.error} role="alert">
-          {startError}
-        </p>
-      )}
-      <canvas
-        ref={canvasRef}
-        // HTML 속성인 width와 height가 Canvas 내부 픽셀 좌표계의 크기를 결정한다.
-        width={CANVAS_WIDTH}
-        height={CANVAS_HEIGHT}
-        // CSS는 페이지에서 Canvas DOM 요소가 보이는 크기를 조절한다.
-        // 내부 크기와 같은 너비로 표시하되 작은 화면에서는 비율을 유지하며 줄인다.
-        className={styles.canvas}
-        aria-label="D, F, J, K 네 개의 레인이 있는 리듬게임 화면"
-      >
-        Canvas를 지원하는 브라우저가 필요합니다.
-      </canvas>
+    <section className={styles.container} aria-label="리듬게임 플레이">
+      <header className={styles.trackHeader}>
+        <span className={styles.brand}>eut-zza</span>
+        <div className={styles.trackInfo}>
+          <span>{sidePanel ? "MULTIPLAYER" : "SOLO PLAY"} / NOW PLAYING</span>
+          <h1>{songTitle}</h1>
+        </div>
+        <span className={styles.difficulty}>{difficulty}</span>
+      </header>
+      <div className={styles.cockpit}>
+        <aside className={styles.scorePanel} aria-label="내 실시간 점수">
+          <p className={styles.panelTitle}>PLAYER / YOU</p>
+          <div className={styles.scoreBlock}>
+            <span>SCORE</span>
+            <strong>
+              {progress.score.toLocaleString("ko-KR", {
+                minimumIntegerDigits: 6,
+              })}
+            </strong>
+          </div>
+          <div className={styles.comboBlock}>
+            <strong>{progress.combo.toString().padStart(3, "0")}</strong>
+            <span>COMBO</span>
+          </div>
+          <div className={styles.keyGuide}>
+            <span>CONTROL / 4 KEY</span>
+            <div>
+              {["D", "F", "J", "K"].map((key) => (
+                <kbd key={key}>{key}</kbd>
+              ))}
+            </div>
+            <p>
+              노트가 판정선에 닿을 때<br />
+              해당 키를 누르세요.
+            </p>
+          </div>
+          {startStatus === "idle" && startAtClientMs === undefined ? (
+            <Link className={styles.backLink} to="/solo">
+              ← 곡 다시 선택
+            </Link>
+          ) : null}
+        </aside>
+        <div className={styles.laneFrame}>
+          <div className={styles.laneTop}>
+            <span>4 KEY</span>
+            <span>{startStatus === "running" ? "PLAY" : "STANDBY"}</span>
+          </div>
+          <div className={styles.canvasWrap}>
+            <canvas
+              ref={canvasRef}
+              width={CANVAS_WIDTH}
+              height={CANVAS_HEIGHT}
+              className={styles.canvas}
+              aria-label="D, F, J, K 네 개의 레인이 있는 리듬게임 화면"
+            >
+              Canvas를 지원하는 브라우저가 필요합니다.
+            </canvas>
+            {startStatus === "idle" || startStatus === "starting" ? (
+              <div className={styles.startOverlay}>
+                <p>ARE YOU READY?</p>
+                <button
+                  className={styles.startButton}
+                  type="button"
+                  disabled={
+                    startAtClientMs !== undefined || startStatus !== "idle"
+                  }
+                  onClick={() => {
+                    void handleStart();
+                  }}
+                >
+                  {startStatus === "starting"
+                    ? "게임 준비 중..."
+                    : startAtClientMs !== undefined
+                      ? "동기화된 시작 대기 중"
+                      : "게임 시작"}
+                </button>
+              </div>
+            ) : null}
+            {startError === null ? null : (
+              <p className={styles.error} role="alert">
+                {startError}
+              </p>
+            )}
+          </div>
+        </div>
+        <aside className={styles.rightPanel}>
+          {sidePanel ?? (
+            <>
+              <p className={styles.panelTitle}>SOUND SELECTED</p>
+              <RecordArtwork />
+              <p className={styles.soloCaption}>
+                JUST YOU.
+                <br />
+                AND THE RHYTHM.
+              </p>
+              <span className={styles.chartInfo}>
+                4 KEY / {SAMPLE_NOTES.length} NOTES
+              </span>
+            </>
+          )}
+        </aside>
+      </div>
+      <footer className={styles.stageFooter}>
+        <span>KEEP YOUR RHYTHM.</span>
+        <span>DF / JK</span>
+      </footer>
     </section>
   );
 };

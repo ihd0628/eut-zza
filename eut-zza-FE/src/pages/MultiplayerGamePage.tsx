@@ -31,11 +31,14 @@ export const MultiplayerGamePage = () => {
   const me = game?.players.find((player) => player.userId === user.id);
   const songsQuery = useQuery({ queryKey: songsQueryKey, queryFn: getSongs });
   const selectedSong = songsQuery.data?.find((song) =>
-    song.beatmaps.some((beatmap) => beatmap.id === game?.beatmapId));
-  const selectedBeatmap = selectedSong?.beatmaps.find((beatmap) =>
-    beatmap.id === game?.beatmapId);
+    song.beatmaps.some((beatmap) => beatmap.id === game?.beatmapId),
+  );
+  const selectedBeatmap = selectedSong?.beatmaps.find(
+    (beatmap) => beatmap.id === game?.beatmapId,
+  );
   const [audioManager, setAudioManager] = useState<AudioManager | null>(() =>
-    game === null ? null : getPreparedAudioManager(game.beatmapId));
+    game === null ? null : getPreparedAudioManager(game.beatmapId),
+  );
   const [result, setResult] = useState<GameResult | null>(null);
   const latestProgressRef = useRef<GameProgress>({ score: 0, combo: 0 });
   const lastProgressSentAtRef = useRef(0);
@@ -70,51 +73,65 @@ export const MultiplayerGamePage = () => {
   const keepCreatedGame = useCallback(async (): Promise<void> => {
     // 멀티플레이 경기와 참가 정보는 방장이 시작할 때 서버에서 이미 함께 만들었다.
   }, []);
-  const sendProgress = useCallback((progress: GameProgress): void => {
-    if (game === null) return;
-    if (sendRoomMessage({
-      type: "game_progress",
-      gameSessionId: game.gameSessionId,
-      score: progress.score,
-      combo: progress.combo,
-    })) {
-      lastProgressSentAtRef.current = performance.now();
-    }
-  }, [game, sendRoomMessage]);
-  const handleProgress = useCallback((progress: GameProgress): void => {
-    latestProgressRef.current = progress;
-    const remainingMs = Math.max(
-      0,
-      PROGRESS_SEND_INTERVAL_MS -
-        (performance.now() - lastProgressSentAtRef.current),
-    );
+  const sendProgress = useCallback(
+    (progress: GameProgress): void => {
+      if (game === null) return;
+      if (
+        sendRoomMessage({
+          type: "game_progress",
+          gameSessionId: game.gameSessionId,
+          score: progress.score,
+          combo: progress.combo,
+        })
+      ) {
+        lastProgressSentAtRef.current = performance.now();
+      }
+    },
+    [game, sendRoomMessage],
+  );
+  const handleProgress = useCallback(
+    (progress: GameProgress): void => {
+      latestProgressRef.current = progress;
+      const remainingMs = Math.max(
+        0,
+        PROGRESS_SEND_INTERVAL_MS -
+          (performance.now() - lastProgressSentAtRef.current),
+      );
 
-    if (remainingMs === 0) {
-      sendProgress(progress);
-      return;
-    }
-    if (progressTimerRef.current !== null) return;
+      if (remainingMs === 0) {
+        sendProgress(progress);
+        return;
+      }
+      if (progressTimerRef.current !== null) return;
 
-    progressTimerRef.current = window.setTimeout(() => {
-      progressTimerRef.current = null;
+      progressTimerRef.current = window.setTimeout(() => {
+        progressTimerRef.current = null;
+        sendProgress(latestProgressRef.current);
+      }, remainingMs);
+    },
+    [sendProgress],
+  );
+  const handleComplete = useCallback(
+    (gameResult: GameResult): void => {
+      if (progressTimerRef.current !== null) {
+        window.clearTimeout(progressTimerRef.current);
+        progressTimerRef.current = null;
+      }
       sendProgress(latestProgressRef.current);
-    }, remainingMs);
-  }, [sendProgress]);
-  const handleComplete = useCallback((gameResult: GameResult): void => {
-    if (progressTimerRef.current !== null) {
-      window.clearTimeout(progressTimerRef.current);
-      progressTimerRef.current = null;
-    }
-    sendProgress(latestProgressRef.current);
-    setResult(gameResult);
-    resultMutation.mutate(gameResult);
-  }, [resultMutation, sendProgress]);
+      setResult(gameResult);
+      resultMutation.mutate(gameResult);
+    },
+    [resultMutation, sendProgress],
+  );
 
-  useEffect(() => () => {
-    if (progressTimerRef.current !== null) {
-      window.clearTimeout(progressTimerRef.current);
-    }
-  }, []);
+  useEffect(
+    () => () => {
+      if (progressTimerRef.current !== null) {
+        window.clearTimeout(progressTimerRef.current);
+      }
+    },
+    [],
+  );
 
   if (game === null) {
     return <p role="alert">시작된 멀티플레이 경기 정보가 없습니다.</p>;
@@ -123,7 +140,11 @@ export const MultiplayerGamePage = () => {
     return <p role="alert">이 경기의 참가 정보를 찾을 수 없습니다.</p>;
   }
   if (songsQuery.isPending) return <p>경기 음원 정보를 불러오고 있습니다.</p>;
-  if (songsQuery.isError || selectedSong === undefined || selectedBeatmap === undefined) {
+  if (
+    songsQuery.isError ||
+    selectedSong === undefined ||
+    selectedBeatmap === undefined
+  ) {
     return <p role="alert">경기 음원 정보를 불러오지 못했습니다.</p>;
   }
 
@@ -131,17 +152,21 @@ export const MultiplayerGamePage = () => {
     return (
       <section className={styles.container}>
         <h1>멀티플레이 경기 재접속</h1>
-        <p>새로고침으로 브라우저의 AudioBuffer가 사라졌습니다.</p>
+        <p>음원을 다시 준비하면 현재 경기 시점에 맞춰 합류합니다.</p>
         <button
           className={styles.actionButton}
           type="button"
           disabled={prepareMutation.isPending}
           onClick={() => prepareMutation.mutate()}
         >
-          {prepareMutation.isPending ? "음원 준비 중..." : "음원 준비 후 경기 합류"}
+          {prepareMutation.isPending
+            ? "음원 준비 중..."
+            : "음원 준비 후 경기 합류"}
         </button>
         {prepareMutation.isError ? (
-          <p className={styles.error} role="alert">{prepareMutation.error.message}</p>
+          <p className={styles.error} role="alert">
+            {prepareMutation.error.message}
+          </p>
         ) : null}
       </section>
     );
@@ -154,34 +179,62 @@ export const MultiplayerGamePage = () => {
   const startAtClientMs = game.startAtServerMs - clockOffsetMs;
 
   return (
-    <section className={styles.container} aria-labelledby="multiplayer-game-title">
-      <p className={styles.eyebrow}>MULTIPLAYER</p>
-      <h1 id="multiplayer-game-title">{selectedSong.title}</h1>
-      <p>
-        {selectedBeatmap.difficulty.toUpperCase()} · 경기 #{game.gameSessionId} ·
-        내 참가 정보 #{me.gamePlayerId}
-      </p>
-
-      <section className={styles.progressPanel} aria-label="참가자 실시간 진행 상황">
-        <h2>실시간 순위</h2>
-        <ol className={styles.progressList}>
-          {[...game.players]
-            .sort((first, second) => second.score - first.score)
-            .map((player) => (
-              <li key={player.gamePlayerId}>
-                <strong>{player.userId === user.id ? "나" : `플레이어 ${player.userId}`}</strong>
-                <span>{player.score.toLocaleString("ko-KR")}점</span>
-                <span>COMBO {player.combo}</span>
-                {player.resultStatus === "playing" ? null : (
-                  <span>{player.resultStatus === "submitted" ? "완주" : "DNF"}</span>
-                )}
-              </li>
-            ))}
-        </ol>
-      </section>
-
+    <section className={styles.container} aria-label="멀티플레이 경기">
       {result === null ? (
         <GameCanvas
+          songTitle={selectedSong.title}
+          difficulty={`${selectedBeatmap.difficulty.toUpperCase()} / LV.${selectedBeatmap.level}`}
+          sidePanel={
+            <section
+              className={styles.progressPanel}
+              aria-label="참가자 실시간 진행 상황"
+            >
+              <h2>
+                LIVE RANKING <span>실시간</span>
+              </h2>
+              <ol className={styles.progressList}>
+                {[...game.players]
+                  .sort((a, b) => b.score - a.score)
+                  .map((player) => (
+                    <li
+                      key={player.gamePlayerId}
+                      className={
+                        player.userId === user.id ? styles.me : undefined
+                      }
+                    >
+                      <span className={styles.rank}>
+                        {game.players.filter(
+                          (other) => other.score > player.score,
+                        ).length + 1}
+                      </span>
+                      <div>
+                        <strong>
+                          {player.userId === user.id
+                            ? "YOU"
+                            : `PLAYER ${player.userId}`}
+                        </strong>
+                        <span className={styles.playerScore}>
+                          {player.score.toLocaleString("ko-KR")}
+                        </span>
+                        <small>
+                          COMBO {player.combo}{" "}
+                          {player.resultStatus === "playing"
+                            ? ""
+                            : player.resultStatus === "submitted"
+                              ? " / 완주"
+                              : " / DNF"}
+                        </small>
+                      </div>
+                    </li>
+                  ))}
+              </ol>
+              <p className={styles.liveNote}>
+                진행 중 점수입니다.
+                <br />
+                최종 순위는 경기 종료 후 확정됩니다.
+              </p>
+            </section>
+          }
           audioUrl={selectedSong.audioUrl}
           audioManager={audioManager}
           startAtClientMs={startAtClientMs}
@@ -194,11 +247,17 @@ export const MultiplayerGamePage = () => {
           <h2>내 경기 완료</h2>
           <p>점수 {result.score.toLocaleString("ko-KR")}</p>
           <p>최대 콤보 {result.maxCombo}</p>
-          {resultMutation.isPending ? <p>내 결과를 저장하고 있습니다.</p> : null}
-          {resultMutation.isSuccess ? <p>다른 참가자의 결과를 기다리고 있습니다.</p> : null}
+          {resultMutation.isPending ? (
+            <p>내 결과를 저장하고 있습니다.</p>
+          ) : null}
+          {resultMutation.isSuccess ? (
+            <p>다른 참가자의 결과를 기다리고 있습니다.</p>
+          ) : null}
           {resultMutation.isError ? (
             <>
-              <p className={styles.error} role="alert">{resultMutation.error.message}</p>
+              <p className={styles.error} role="alert">
+                {resultMutation.error.message}
+              </p>
               <button
                 className={styles.actionButton}
                 type="button"

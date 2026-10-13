@@ -8,6 +8,7 @@ import {
 } from "../api/song-api";
 import { songsQueryKey } from "../query/query-keys";
 import styles from "./SoloSetup.module.css";
+import { RecordArtwork } from "./RecordArtwork";
 import { LeaderboardPanel } from "./LeaderboardPanel";
 
 export type SoloGameSelection = {
@@ -79,87 +80,102 @@ export const SoloSetup = ({ onStart }: SoloSetupProps) => {
       <header className={styles.header}>
         <p className={styles.eyebrow}>SOLO PLAY</p>
         <h1 id="solo-setup-title" className={styles.title}>
-          곡과 난이도를 선택하세요.
+          MUSIC SELECT
         </h1>
       </header>
 
-      <div className={styles.selectionSection}>
-        <h2 className={styles.sectionTitle}>곡 선택</h2>
-        <div className={styles.songGrid}>
-          {songsQuery.data.map((song) => {
-            const isSelected = song.id === selectedSongId;
-
-            return (
-              <button
-                key={song.id}
-                className={`${styles.songCard} ${
-                  isSelected ? styles.selected : ""
-                }`}
-                type="button"
-                aria-pressed={isSelected}
-                onClick={() => {
-                  setSelectedSongId(song.id);
-                  setSelectedBeatmapId(null);
-                }}
-              >
-                <span className={styles.songLabel}>SONG</span>
-                <strong className={styles.songTitle}>{song.title}</strong>
-                <span>{song.beatmaps.length}개 난이도</span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      <div className={styles.selectionSection}>
-        <h2 className={styles.sectionTitle}>난이도 선택</h2>
-        {selectedSong === undefined ? (
-          <p className={styles.guide}>먼저 곡을 선택하세요.</p>
-        ) : selectedSong.beatmaps.length === 0 ? (
-          <p className={styles.guide}>이 곡에는 플레이 가능한 채보가 없습니다.</p>
-        ) : (
-          <div className={styles.difficultyGrid}>
-            {selectedSong.beatmaps.map((beatmap) => {
-              const isSelected = beatmap.id === selectedBeatmapId;
+      <div className={styles.console}>
+        <div className={styles.selectionSection}>
+          <h2 className={styles.sectionTitle}>곡 선택</h2>
+          <div className={styles.songGrid}>
+            {songsQuery.data.map((song, index) => {
+              const isSelected = song.id === selectedSongId;
 
               return (
                 <button
-                  key={beatmap.id}
-                  className={`${styles.difficultyButton} ${
+                  key={song.id}
+                  className={`${styles.songCard} ${
                     isSelected ? styles.selected : ""
                   }`}
                   type="button"
                   aria-pressed={isSelected}
-                  onClick={() => setSelectedBeatmapId(beatmap.id)}
+                  onClick={() => {
+                    setSelectedSongId(song.id);
+                    setSelectedBeatmapId(null);
+                  }}
                 >
-                  <strong>{DIFFICULTY_LABELS[beatmap.difficulty]}</strong>
-                  <span>레벨 {beatmap.level}</span>
+                  <span className={styles.songLabel}>
+                    {String(index + 1).padStart(2, "0")}
+                  </span>
+                  <strong className={styles.songTitle}>{song.title}</strong>
+                  <span>{song.beatmaps.length}개 난이도</span>
                 </button>
               );
             })}
           </div>
-        )}
+          {selectedSong !== undefined && selectedBeatmap !== undefined ? (
+            <LeaderboardPanel
+              songId={selectedSong.id}
+              difficulty={selectedBeatmap.difficulty}
+            />
+          ) : null}
+        </div>
+
+        <div className={styles.detail}>
+          <div className={styles.cover}>
+            <RecordArtwork />
+          </div>
+          <p className={styles.selectedTitle}>
+            {selectedSong?.title ?? "SELECT A TRACK"}
+          </p>
+          <div className={styles.selectionSection}>
+            <h2 className={styles.sectionTitle}>난이도 선택</h2>
+            {selectedSong === undefined ? (
+              <p className={styles.guide}>먼저 곡을 선택하세요.</p>
+            ) : selectedSong.beatmaps.length === 0 ? (
+              <p className={styles.guide}>
+                이 곡에는 플레이 가능한 채보가 없습니다.
+              </p>
+            ) : (
+              <div className={styles.difficultyGrid}>
+                {selectedSong.beatmaps.map((beatmap) => {
+                  const isSelected = beatmap.id === selectedBeatmapId;
+
+                  return (
+                    <button
+                      key={beatmap.id}
+                      className={`${styles.difficultyButton} ${
+                        isSelected ? styles.selected : ""
+                      }`}
+                      type="button"
+                      aria-pressed={isSelected}
+                      onClick={() => setSelectedBeatmapId(beatmap.id)}
+                    >
+                      <strong>{DIFFICULTY_LABELS[beatmap.difficulty]}</strong>
+                      <span>레벨 {beatmap.level}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          <button
+            className={styles.startButton}
+            type="button"
+            disabled={
+              selectedSong === undefined || selectedBeatmap === undefined
+            }
+            onClick={() => {
+              if (selectedSong !== undefined && selectedBeatmap !== undefined) {
+                onStart({ song: selectedSong, beatmap: selectedBeatmap });
+              }
+            }}
+          >
+            GAME START / 게임 준비 →
+          </button>
+        </div>
       </div>
-
-      {selectedSong !== undefined && selectedBeatmap !== undefined ? (
-        <LeaderboardPanel
-          songId={selectedSong.id}
-          difficulty={selectedBeatmap.difficulty}
-        />
-      ) : null}
-
-      <button
-        className={styles.startButton}
-        type="button"
-        disabled={selectedSong === undefined || selectedBeatmap === undefined}
-        onClick={() => {
-          if (selectedSong !== undefined && selectedBeatmap !== undefined) {
-            onStart({ song: selectedSong, beatmap: selectedBeatmap });
-          }
-        }}
-      >
-        선택한 곡으로 게임 준비
-      </button>
     </section>
   );
 };

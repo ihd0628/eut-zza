@@ -18,15 +18,17 @@ export const ModeSelection = ({
   onShowRecords,
 }: ModeSelectionProps) => {
   return (
-    <section className={styles.container} aria-labelledby="mode-selection-title">
+    <section
+      className={styles.container}
+      aria-labelledby="mode-selection-title"
+    >
       <div className={styles.headingGroup}>
-        <p className={styles.eyebrow}>PLAY MODE</p>
+        <p className={styles.eyebrow}>SELECT YOUR MODE / 01</p>
         <h1 id="mode-selection-title" className={styles.title}>
-          어떤 방식으로 플레이할까요?
+          FEEL THE <span>BEAT.</span>
         </h1>
         <p className={styles.description}>
-          혼자 기록에 도전하거나, 최대 4명이 참여하는 방에서 함께 대전할 수
-          있습니다.
+          네 개의 키, 당신만의 리듬. 플레이 모드를 선택하세요.
         </p>
       </div>
 
@@ -37,11 +39,16 @@ export const ModeSelection = ({
           onClick={() => onSelect("solo")}
         >
           <span className={styles.modeBadge}>SOLO</span>
+          <span className={styles.modeGraphic} aria-hidden="true">
+            01
+          </span>
           <strong className={styles.modeTitle}>솔로 플레이</strong>
           <span className={styles.modeDescription}>
             곡과 난이도를 선택하고 개인 기록에 도전합니다.
           </span>
-          <span className={styles.modeAction}>선택하기 →</span>
+          <span className={styles.modeAction}>
+            1 PLAYER <b>솔로 플레이 시작 ↗</b>
+          </span>
         </button>
 
         <button
@@ -50,11 +57,16 @@ export const ModeSelection = ({
           onClick={() => onSelect("multiplayer")}
         >
           <span className={styles.modeBadge}>MULTIPLAYER</span>
+          <span className={styles.modeGraphic} aria-hidden="true">
+            04
+          </span>
           <strong className={styles.modeTitle}>멀티플레이</strong>
           <span className={styles.modeDescription}>
             방을 만들거나 입장해 최대 4명의 플레이어와 대전합니다.
           </span>
-          <span className={styles.modeAction}>준비 상태 보기 →</span>
+          <span className={styles.modeAction}>
+            2–4 PLAYERS <b>대전 로비 입장 ↗</b>
+          </span>
         </button>
       </div>
 
@@ -63,7 +75,7 @@ export const ModeSelection = ({
         type="button"
         onClick={onShowRecords}
       >
-        내 게임 기록 보기 →
+        MY RECORDS <span>내 기록 확인 ↗</span>
       </button>
     </section>
   );

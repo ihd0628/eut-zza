@@ -1,68 +1,75 @@
 :root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --surface: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px,
-    rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
-  --sans: system-ui, "Segoe UI", Roboto, sans-serif;
-
-  color: var(--text);
-  background: var(--bg);
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
-  color-scheme: light dark;
+  font-family: Arial, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+  color: #f0f0f4;
+  background: #0b0c10;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  --bg: #0b0c10;
+  --surface: #15161e;
+  --surface-raised: #20212d;
+  --border: #373944;
+  --text: #b3b5c3;
+  --text-h: #f0f0f4;
+  --accent: #a5a0ff;
+  --accent-solid: #6b5fe8;
+  --accent-border: #7972d8;
+  --yellow: #edff80;
+  --error: #ff9292;
+  --success: #a6e9ba;
+  --display: Impact, "Arial Narrow", "Helvetica Neue", sans-serif;
+  --mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  --sans: Arial, "Apple SD Gothic Neo", sans-serif;
 }
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --surface: #1f2028;
-    --accent: #c084fc;
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px,
-      rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
-  }
-}
-
 * {
   box-sizing: border-box;
 }
-
 body {
+  margin: 0;
   min-width: 320px;
   min-height: 100svh;
-  margin: 0;
-  background: var(--bg);
 }
-
 button,
-input {
+input,
+select {
   font: inherit;
 }
-
-#root {
-  width: 1126px;
-  max-width: 100%;
-  min-height: 100svh;
-  margin: 0 auto;
-  border-inline: 1px solid var(--border);
+button,
+a,
+input,
+select {
+  -webkit-tap-highlight-color: transparent;
 }
-
-@media (max-width: 1024px) {
-  :root {
-    font-size: 16px;
+button {
+  cursor: pointer;
+}
+button:disabled {
+  cursor: not-allowed;
+}
+a {
+  color: inherit;
+}
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--yellow);
+  outline-offset: 4px;
+}
+::selection {
+  background: var(--accent-solid);
+  color: white;
+}
+#root {
+  min-height: 100svh;
+  isolation: isolate;
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

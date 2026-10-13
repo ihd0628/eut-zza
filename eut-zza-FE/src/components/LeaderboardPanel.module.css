@@ -1,69 +1,66 @@
 .panel {
-  display: grid;
-  gap: 16px;
-  padding: 22px;
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  background: var(--surface);
+  margin-top: 24px;
+  border-top: 1px solid var(--border);
+  padding-top: 18px;
 }
-
 .heading {
   display: flex;
-  align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  align-items: center;
+  margin-bottom: 16px;
 }
-
-.heading h2,
+.heading h2 {
+  font-size: 14px;
+  margin: 6px 0 0;
+}
+.heading > span {
+  color: var(--yellow);
+  font: 10px var(--mono);
+}
 .eyebrow {
+  font: 9px var(--mono);
+  color: var(--text);
+  letter-spacing: 0.14em;
   margin: 0;
 }
-
-.eyebrow {
-  color: var(--accent);
+.panel > p {
+  color: var(--text);
   font-size: 12px;
-  font-weight: 800;
-  letter-spacing: .14em;
+  line-height: 1.7;
 }
-
 .ranking {
-  display: grid;
-  gap: 8px;
   margin: 0;
   padding: 0;
   list-style: none;
 }
-
 .entry {
   display: grid;
-  grid-template-columns: 54px minmax(140px, 1fr) auto auto;
+  grid-template-columns: 24px minmax(0, 1fr) auto;
+  gap: 8px;
   align-items: center;
-  gap: 14px;
-  padding: 12px 0;
   border-top: 1px solid var(--border);
+  padding: 12px 0;
+  font-size: 11px;
 }
-
-.rank,
-.score {
-  color: var(--text-h);
+.rank {
+  font: 12px var(--mono);
+  color: var(--accent);
 }
-
 .email {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  color: var(--text);
 }
-
+.score {
+  font: 700 13px var(--mono);
+  color: var(--yellow);
+}
+.entry small {
+  grid-column: 2 / -1;
+  color: var(--text);
+  font-size: 10px;
+}
 .error {
-  color: #dc2626;
-}
-
-@media (max-width: 600px) {
-  .entry {
-    grid-template-columns: 48px 1fr auto;
-  }
-
-  .entry small {
-    grid-column: 2 / -1;
-  }
+  color: var(--error);
 }

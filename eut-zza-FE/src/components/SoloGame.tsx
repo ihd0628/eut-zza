@@ -6,10 +6,7 @@ import {
   type StartedSoloGame,
 } from "../api/game-session-api";
 import type { GameResult } from "../game/types";
-import {
-  myBestScoresQueryKey,
-  myScoresQueryKey,
-} from "../query/query-keys";
+import { myBestScoresQueryKey, myScoresQueryKey } from "../query/query-keys";
 import type { SoloGameSelection } from "./SoloSetup";
 import { GameCanvas } from "./GameCanvas";
 import { SoloResult } from "./SoloResult";
@@ -92,23 +89,10 @@ export const SoloGame = ({ selection, onSaved }: SoloGameProps) => {
 
   return (
     <section className={styles.container} aria-label="솔로 게임">
-      <div className={styles.selectionSummary}>
-        <strong>{selection.song.title}</strong>
-        <span>
-          {selection.beatmap.difficulty.toUpperCase()} · 레벨{" "}
-          {selection.beatmap.level}
-        </span>
-      </div>
-
-      {startGameMutation.data === undefined ? null : (
-        <p className={styles.sessionStatus}>
-          솔로 경기 #{startGameMutation.data.gameSession.id} · 참가 정보 #
-          {startGameMutation.data.gamePlayer.id}
-        </p>
-      )}
-
       {gameResult === null ? (
         <GameCanvas
+          songTitle={selection.song.title}
+          difficulty={`${selection.beatmap.difficulty.toUpperCase()} / LV.${selection.beatmap.level}`}
           audioUrl={selection.song.audioUrl}
           onCreateGame={ensureGameSession}
           onComplete={handleGameComplete}
