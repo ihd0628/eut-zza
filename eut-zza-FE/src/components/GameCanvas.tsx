@@ -11,13 +11,25 @@ import type { AudioManager } from "../game/AudioManager";
 import { GameEngine } from "../game/GameEngine";
 import { CanvasRenderer } from "../game/CanvasRenderer";
 import { RecordArtwork } from "./RecordArtwork";
-import type { GameProgress, GameResult } from "../game/types";
+import type {
+  GameJudgmentEvent,
+  GameProgress,
+  GameResult,
+  Judgment,
+} from "../game/types";
 import styles from "./GameCanvas.module.css";
 
 // 이 숫자들은 Canvas 내부 그림판(backing store)의 크기다.
 // CSS로 보이는 크기만 늘리는 것과 달리 width/height 속성은 실제 그리기 좌표계를 정한다.
 const CANVAS_WIDTH = 480;
 const CANVAS_HEIGHT = 720;
+const FEEDBACK_DURATION_MS = 650;
+const GAME_KEYS = ["D", "F", "J", "K"] as const;
+
+type JudgmentFeedback = {
+  id: number;
+  judgment: Judgment;
+};
 
 /**
  * React에서 실제 <canvas> DOM 요소를 만들고 CanvasRenderer에 전달하는 컴포넌트다.
@@ -64,12 +76,22 @@ export const GameCanvas = ({
   const gameEngineRef = useRef<GameEngine | null>(null);
   const startInProgressRef = useRef(false);
   const mountedRef = useRef(false);
+  const feedbackIdRef = useRef(0);
+  const feedbackTimersRef = useRef<Array<number | null>>([
+    null,
+    null,
+    null,
+    null,
+  ]);
   const [startStatus, setStartStatus] = useState<StartStatus>("idle");
   const [startError, setStartError] = useState<string | null>(null);
   const [progress, setProgress] = useState<GameProgress>({
     score: 0,
     combo: 0,
   });
+  const [feedbackByLane, setFeedbackByLane] = useState<
+    Array<JudgmentFeedback | null>
+  >([null, null, null, null]);
   // HUD는 판정이 발생할 때만 갱신한다. 매 프레임의 노트 이동은 여전히 Canvas가 담당한다.
   const handleProgress = useCallback(
     (next: GameProgress) => {
@@ -77,6 +99,32 @@ export const GameCanvas = ({
       onProgress?.(next);
     },
     [onProgress],
+  );
+
+  const handleJudgment = useCallback(
+    ({ laneIndex, judgment }: GameJudgmentEvent) => {
+      if (!mountedRef.current) return;
+
+      // 빠른 연타는 같은 레인의 이전 표시만 교체한다. 다른 레인의 판정은 유지한다.
+      const id = ++feedbackIdRef.current;
+      const previousTimer = feedbackTimersRef.current[laneIndex];
+      if (previousTimer !== null) window.clearTimeout(previousTimer);
+
+      setFeedbackByLane((current) =>
+        current.map((feedback, index) =>
+          index === laneIndex ? { id, judgment } : feedback,
+        ),
+      );
+      feedbackTimersRef.current[laneIndex] = window.setTimeout(() => {
+        setFeedbackByLane((current) =>
+          current.map((feedback, index) =>
+            index === laneIndex && feedback?.id === id ? null : feedback,
+          ),
+        );
+        feedbackTimersRef.current[laneIndex] = null;
+      }, FEEDBACK_DURATION_MS);
+    },
+    [],
   );
 
   const handleStart = useCallback(async (): Promise<void> => {
@@ -111,6 +159,7 @@ export const GameCanvas = ({
       },
       audioManager,
       handleProgress,
+      handleJudgment,
     );
 
     gameEngineRef.current = gameEngine;
@@ -149,11 +198,13 @@ export const GameCanvas = ({
     onComplete,
     onCreateGame,
     handleProgress,
+    handleJudgment,
     startAtClientMs,
   ]);
 
   useEffect(() => {
     mountedRef.current = true;
+    const feedbackTimers = feedbackTimersRef.current;
     if (canvasRef.current !== null) {
       new CanvasRenderer(canvasRef.current).render([], 0);
     }
@@ -161,6 +212,9 @@ export const GameCanvas = ({
     return () => {
       mountedRef.current = false;
       startInProgressRef.current = false;
+      for (const timer of feedbackTimers) {
+        if (timer !== null) window.clearTimeout(timer);
+      }
 
       const gameEngine = gameEngineRef.current;
 
@@ -210,7 +264,7 @@ export const GameCanvas = ({
           <div className={styles.keyGuide}>
             <span>CONTROL / 4 KEY</span>
             <div>
-              {["D", "F", "J", "K"].map((key) => (
+              {GAME_KEYS.map((key) => (
                 <kbd key={key}>{key}</kbd>
               ))}
             </div>
@@ -240,6 +294,28 @@ export const GameCanvas = ({
             >
               Canvas를 지원하는 브라우저가 필요합니다.
             </canvas>
+            <div className={styles.judgmentFeedback} aria-hidden="true">
+              {GAME_KEYS.map((key, laneIndex) => {
+                const feedback = feedbackByLane[laneIndex];
+
+                return (
+                  <div key={key} className={styles.feedbackLane}>
+                    {feedback === null ? null : (
+                      <span
+                        key={feedback.id}
+                        className={styles.feedbackLabel}
+                        data-judgment={feedback.judgment}
+                      >
+                        {feedback.judgment !== "MISS" ? (
+                          <span className={styles.hitBurst} />
+                        ) : null}
+                        {feedback.judgment}
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
             {startStatus === "idle" || startStatus === "starting" ? (
               <div className={styles.startOverlay}>
                 <p>ARE YOU READY?</p>

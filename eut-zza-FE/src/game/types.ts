@@ -54,5 +54,11 @@ export type GameProgress = {
   combo: number;
 };
 
+export type GameJudgmentEvent = {
+  laneIndex: LaneIndex;
+  judgment: Judgment;
+};
+
 export type GameCompleteCallback = (result: GameResult) => void;
 export type GameProgressCallback = (progress: GameProgress) => void;
+export type GameJudgmentCallback = (event: GameJudgmentEvent) => void;

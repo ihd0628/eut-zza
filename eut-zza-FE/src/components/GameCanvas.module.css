@@ -78,6 +78,141 @@
   height: auto;
   aspect-ratio: 2 / 3;
 }
+.judgmentFeedback {
+  position: absolute;
+  z-index: 1;
+  inset-inline: 0;
+  bottom: 9.7%;
+  height: 3%;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  pointer-events: none;
+}
+.feedbackLane {
+  min-width: 0;
+  display: grid;
+  place-items: center;
+}
+.feedbackLabel {
+  position: relative;
+  width: calc(100% - 6px);
+  height: 100%;
+  display: grid;
+  place-items: center;
+  border-top: 1px solid currentColor;
+  background: #080a10e8;
+  font: 900 clamp(9px, 1.5vw, 18px)/1 var(--mono);
+  letter-spacing: -0.04em;
+  white-space: nowrap;
+  text-shadow: 0 0 8px currentColor;
+  animation: feedbackFade 650ms ease-out both;
+}
+.feedbackLabel[data-judgment="PERFECT"] {
+  --hit-rgb: 237 255 128;
+  --hit-scale: 1;
+  --hit-opacity: 1;
+  color: var(--yellow);
+}
+.feedbackLabel[data-judgment="GREAT"] {
+  --hit-rgb: 117 224 255;
+  --hit-scale: 0.85;
+  --hit-opacity: 0.95;
+  color: #75e0ff;
+}
+.feedbackLabel[data-judgment="GOOD"] {
+  --hit-rgb: 255 193 112;
+  --hit-scale: 0.7;
+  --hit-opacity: 0.8;
+  color: #ffe1a3;
+}
+.feedbackLabel[data-judgment="MISS"] {
+  color: var(--error);
+}
+/* 판정선에만 짧게 터지는 빛. 같은 레인의 새 판정은 React key로 효과를 다시 시작한다. */
+.hitBurst {
+  position: absolute;
+  inset-inline: 0;
+  top: -40%;
+  height: 0;
+  pointer-events: none;
+}
+.hitBurst::before,
+.hitBurst::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 0;
+  opacity: 0;
+}
+.hitBurst::before {
+  width: 140%;
+  height: clamp(72px, 12vw, 144px);
+  background: radial-gradient(
+    ellipse,
+    #fff 0% 12%,
+    rgb(var(--hit-rgb) / 1) 28%,
+    rgb(var(--hit-rgb) / 0.75) 48%,
+    rgb(var(--hit-rgb) / 0) 75%
+  );
+  animation: hitFlash 340ms ease-out both;
+}
+.hitBurst::after {
+  width: 145%;
+  height: clamp(96px, 15vw, 192px);
+  background:
+    radial-gradient(ellipse 3px 16px at 50% 8%, #fff 35%, transparent 100%),
+    radial-gradient(ellipse 3px 12px at 18% 24%, currentColor 35%, transparent 100%),
+    radial-gradient(ellipse 3px 12px at 82% 24%, currentColor 35%, transparent 100%),
+    radial-gradient(ellipse 12px 3px at 8% 50%, currentColor 35%, transparent 100%),
+    radial-gradient(ellipse 12px 3px at 92% 50%, currentColor 35%, transparent 100%),
+    radial-gradient(ellipse 3px 9px at 28% 76%, currentColor 35%, transparent 100%),
+    radial-gradient(ellipse 3px 9px at 72% 76%, currentColor 35%, transparent 100%);
+  animation: hitSparks 420ms ease-out both;
+}
+@keyframes hitFlash {
+  from {
+    opacity: var(--hit-opacity);
+    transform: translate(-50%, -50%) scale(0.35);
+  }
+  18%,
+  32% {
+    opacity: var(--hit-opacity);
+    transform: translate(-50%, -50%) scale(var(--hit-scale));
+  }
+  to {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(var(--hit-scale), 0.45);
+  }
+}
+@keyframes hitSparks {
+  from {
+    opacity: var(--hit-opacity);
+    transform: translate(-50%, -50%) scale(0.3);
+  }
+  to {
+    opacity: 0;
+    transform: translate(-50%, -60%) scale(var(--hit-scale));
+  }
+}
+@keyframes feedbackFade {
+  from {
+    opacity: 1;
+  }
+  60% {
+    opacity: 0.92;
+  }
+  to {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hitBurst {
+    display: none;
+  }
+  .feedbackLabel {
+    animation: none;
+  }
+}
 /* 내부 Canvas는 480×720을 유지한다. 헤더·프레임·푸터 공간을 뺀 높이에 맞춰 CSS 표시 크기만 조절한다. */
 .scorePanel,
 .rightPanel {

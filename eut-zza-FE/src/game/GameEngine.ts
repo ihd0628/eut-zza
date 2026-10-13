@@ -26,6 +26,7 @@ import {
 import type {
   GameCompleteCallback,
   GameInputEvent,
+  GameJudgmentCallback,
   GameKey,
   GameProgressCallback,
   GameResult,
@@ -57,6 +58,7 @@ export class GameEngine {
   private readonly audioUrl: string;
   private readonly onComplete: GameCompleteCallback;
   private readonly onProgress?: GameProgressCallback;
+  private readonly onJudgment?: GameJudgmentCallback;
   private readonly judgedNoteIds = new Set<string>();
   private readonly notesByLane: Record<LaneIndex, readonly Note[]>;
   private readonly noteRenderLookaheadMs: number;
@@ -79,6 +81,7 @@ export class GameEngine {
     onComplete: GameCompleteCallback,
     audioManager = new AudioManager(),
     onProgress?: GameProgressCallback,
+    onJudgment?: GameJudgmentCallback,
   ) {
     this.audioManager = audioManager;
     this.renderer = new CanvasRenderer(canvas);
@@ -86,6 +89,7 @@ export class GameEngine {
     this.audioUrl = audioUrl;
     this.onComplete = onComplete;
     this.onProgress = onProgress;
+    this.onJudgment = onJudgment;
 
     this.gameLoop = new GameLoop(this.handleFrame);
     this.inputManager = new InputManager(this.handleInput);
@@ -158,7 +162,7 @@ export class GameEngine {
       // MISS 판정이 가능하면 기록하고 로그를 남긴다.
       this.judgedNoteIds.add(note.id);
       this.nextMissNoteIndex += 1;
-      this.recordJudgment("MISS");
+      this.recordJudgment("MISS", note.laneIndex);
 
       console.log("[Judgment] MISS", {
         noteId: note.id,
@@ -170,7 +174,7 @@ export class GameEngine {
     this.completeGameIfAllNotesAreJudged();
   }
 
-  private recordJudgment(judgment: Judgment): void {
+  private recordJudgment(judgment: Judgment, laneIndex: LaneIndex): void {
     this.score += JUDGMENT_SCORE[judgment];
 
     if (judgment === "MISS") {
@@ -190,6 +194,7 @@ export class GameEngine {
     }
 
     this.onProgress?.({ score: this.score, combo: this.combo });
+    this.onJudgment?.({ laneIndex, judgment });
   }
 
   private completeGameIfAllNotesAreJudged(): void {
@@ -299,7 +304,7 @@ export class GameEngine {
 
     // 같은 노트를 다시 판정하지 못하도록 기록한다.
     this.judgedNoteIds.add(closestNote.id);
-    this.recordJudgment(judgment);
+    this.recordJudgment(judgment, closestNote.laneIndex);
 
     console.log("[Judgment]", {
       noteId: closestNote.id,
